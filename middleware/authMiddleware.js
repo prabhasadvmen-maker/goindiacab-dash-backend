@@ -15,8 +15,11 @@ export const protect = async (req, res, next) => {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
       let superadmin = await SuperAdmin.findById(decoded.id).select('-password');
+      let role = 'SuperAdmin';
+
       if (!superadmin) {
         superadmin = await Admin.findById(decoded.id).select('-password');
+        role = 'Admin';
       }
 
       if (!superadmin) {
@@ -24,6 +27,8 @@ export const protect = async (req, res, next) => {
       }
 
       req.superadmin = superadmin;
+      req.superadmin.role = role;
+      
       next();
     } catch (error) {
       console.error('JWT verification error:', error);

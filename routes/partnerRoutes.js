@@ -20,6 +20,14 @@ import {
   adminGetApplications,
   adminGetSingleApplication,
 } from '../controllers/partnerController.js';
+import {
+  getPartnerBookings,
+  getPartnerBookingById,
+  updateBookingStatus,
+  getPartnerEarnings,
+  getPartnerNotifications,
+  markNotificationsRead
+} from '../controllers/partnerOperationsController.js';
 import { protectPartner } from '../middleware/partnerAuthMiddleware.js';
 import { protect } from '../middleware/authMiddleware.js';
 
@@ -46,6 +54,16 @@ router.post('/onboarding/submit', protectPartner, submitApplication);
 
 // ── Protected: Partner Profile ───────────────────────────────────────────────
 router.get('/profile', protectPartner, getPartnerProfile);
+
+// ── Protected: Partner Bookings ──────────────────────────────────────────────
+router.get('/bookings', protectPartner, getPartnerBookings);
+router.get('/bookings/:id', protectPartner, getPartnerBookingById);
+router.put('/bookings/:id/status', protectPartner, updateBookingStatus);
+
+// ── Protected: Earnings & Notifications ──────────────────────────────────────
+router.get('/earnings', protectPartner, getPartnerEarnings);
+router.get('/notifications', protectPartner, getPartnerNotifications);
+router.put('/notifications/read', protectPartner, markNotificationsRead);
 
 // ── Admin: Partner Application Management (SuperAdmin/Admin protected) ────────
 router.get('/admin/applications', protect, adminGetApplications);

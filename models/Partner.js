@@ -196,6 +196,16 @@ const partnerSchema = new mongoose.Schema(
       default: false,
     },
 
+    // ── Earnings & Wallet ────────────────────────────────────────
+    walletBalance: {
+      type: Number,
+      default: 0,
+    },
+    totalEarnings: {
+      type: Number,
+      default: 0,
+    },
+
     // JWT password (set after phone verify — used for session)
     password: {
       type: String,

@@ -8,10 +8,19 @@ import adminRoutes from './routes/adminRoutes.js';
 import adminAuthRoutes from './routes/adminAuthRoutes.js';
 import partnerRoutes from './routes/partnerRoutes.js';
 import userAuthRoutes from './routes/userAuthRoutes.js';
+import configRoutes from './routes/configRoutes.js';
+import vehicleRoutes from './routes/vehicleRoutes.js';
+import adminComplaintRoutes from './routes/adminComplaintRoutes.js';
+import http from 'http';
+import { initSocket } from './socket.js';
 
 dotenv.config();
 
 const app = express();
+const server = http.createServer(app);
+
+// Initialize Socket.io
+initSocket(server);
 
 // CORS setup
 const corsOptions = {
@@ -44,6 +53,7 @@ const otpLimiter = rateLimit({
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/admins', adminRoutes);
+app.use('/api/admins/complaints', adminComplaintRoutes);
 app.use('/api/admin/auth', adminAuthRoutes);
 app.use('/api/partner', partnerRoutes);
 app.use('/api/v1/user/auth/send-otp', otpLimiter);
@@ -51,6 +61,8 @@ app.use('/api/v1/user/auth/resend-otp', otpLimiter);
 app.use('/api/v1/user/auth/login', authLimiter);
 app.use('/api/v1/user/auth/register', authLimiter);
 app.use('/api/v1/user/auth', userAuthRoutes);
+app.use('/api/config', configRoutes);
+app.use('/api/vehicles', vehicleRoutes);
 
 // Health check endpoint
 app.get('/', (req, res) => {
@@ -62,8 +74,8 @@ const PORT = process.env.PORT || 5000;
 // Connect DB then start server
 connectDB()
   .then(() => {
-    app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
+    server.listen(PORT, () => {
+      console.log(`Server & Socket.io running on port ${PORT}`);
     });
   })
   .catch((err) => {
