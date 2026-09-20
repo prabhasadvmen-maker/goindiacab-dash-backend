@@ -51,6 +51,10 @@ const userSchema = new mongoose.Schema(
       type: [String],
       default: [],
     },
+    walletBalance: {
+      type: Number,
+      default: 0,
+    },
     // Refresh token
     refreshToken: {
       type: String,

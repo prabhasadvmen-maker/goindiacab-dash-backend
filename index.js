@@ -8,6 +8,8 @@ import adminRoutes from './routes/adminRoutes.js';
 import adminAuthRoutes from './routes/adminAuthRoutes.js';
 import partnerRoutes from './routes/partnerRoutes.js';
 import userAuthRoutes from './routes/userAuthRoutes.js';
+import userRoutes from './routes/userRoutes.js';
+import mapRoutes from './routes/mapRoutes.js';
 import configRoutes from './routes/configRoutes.js';
 import vehicleRoutes from './routes/vehicleRoutes.js';
 import adminComplaintRoutes from './routes/adminComplaintRoutes.js';
@@ -61,6 +63,8 @@ app.use('/api/v1/user/auth/resend-otp', otpLimiter);
 app.use('/api/v1/user/auth/login', authLimiter);
 app.use('/api/v1/user/auth/register', authLimiter);
 app.use('/api/v1/user/auth', userAuthRoutes);
+app.use('/api/v1/user/operations', userRoutes);
+app.use('/api/v1/maps', mapRoutes);
 app.use('/api/config', configRoutes);
 app.use('/api/vehicles', vehicleRoutes);
 

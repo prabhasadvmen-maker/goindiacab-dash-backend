@@ -1,6 +1,7 @@
 import Booking from '../models/Booking.js';
 import Partner from '../models/Partner.js';
 import Notification from '../models/Notification.js';
+import { getIO } from '../socket.js';
 
 // ... existing code ...
 // I will rewrite the whole file but preserve existing exports.
@@ -101,6 +102,17 @@ export const updateBookingStatus = async (req, res) => {
 
     await booking.save();
 
+    // Emit socket event to update User
+    try {
+      const io = getIO();
+      io.emit('bookingStatusUpdate', {
+        bookingId: booking._id,
+        status: booking.status
+      });
+    } catch (err) {
+      console.warn('Socket emit failed:', err.message);
+    }
+
     res.status(200).json({ 
       success: true, 
       data: booking,
@@ -196,5 +208,88 @@ export const markNotificationsRead = async (req, res) => {
   } catch (error) {
     console.error('Error updating notifications:', error);
     res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// @desc    Get dashboard stats
+// @route   GET /api/v1/partner/operations/dashboard-stats
+// @access  Private (Partner)
+export const getDashboardStats = async (req, res) => {
+  try {
+    const partner = await Partner.findById(req.partner._id);
+    
+    // Calculate today's earnings and trips
+    const now = new Date();
+    const startOfDay = new Date(now.setHours(0, 0, 0, 0));
+    
+    const todayBookings = await Booking.find({
+      partner: req.partner._id,
+      status: 'COMPLETED',
+      createdAt: { $gte: startOfDay }
+    });
+
+    let todayEarnings = 0;
+    todayBookings.forEach(b => {
+      todayEarnings += (b.fare.final || b.fare.estimated || 0);
+    });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        todayEarnings,
+        tripsCompleted: todayBookings.length,
+        rating: partner.rating || 5.0,
+        onlineHours: "2h 30m" // Placeholder for now, can be calculated based on sessions
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching dashboard stats:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// @desc    Accept a booking request
+// @route   POST /api/v1/partner/operations/bookings/:id/accept
+// @access  Private (Partner)
+export const acceptBooking = async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id).populate('user', 'name phone');
+    
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+
+    if (booking.status !== 'PENDING') {
+      return res.status(400).json({ success: false, message: 'Booking is no longer available' });
+    }
+
+    booking.partner = req.partner._id;
+    booking.status = 'ACCEPTED';
+    
+    // Generate a 4-digit OTP for the ride start
+    booking.otp = Math.floor(1000 + Math.random() * 9000).toString();
+    
+    await booking.save();
+
+    // Emit socket event to the specific user room (using booking.user._id)
+    try {
+      const io = getIO();
+      io.emit('bookingStatusUpdate', {
+        bookingId: booking._id,
+        status: booking.status,
+        partnerId: req.partner._id
+      });
+    } catch (err) {
+      console.warn('Socket emit failed:', err.message);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Booking accepted successfully',
+      data: booking
+    });
+  } catch (error) {
+    console.error('Error accepting booking:', error);
+    res.status(500).json({ success: false, message: 'Server error accepting booking' });
   }
 };

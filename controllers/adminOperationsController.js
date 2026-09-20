@@ -2,6 +2,7 @@ import Booking from '../models/Booking.js';
 import Partner from '../models/Partner.js';
 import { getActiveDrivers as getSocketActiveDrivers } from '../socket.js';
 import User from '../models/User.js';
+import Complaint from '../models/Complaint.js';
 
 // @desc    Get high level stats for Operations Dashboard
 // @route   GET /api/admins/operations/overview
@@ -15,12 +16,20 @@ export const getOperationsOverview = async (req, res) => {
       activeDriversCount,
       ongoingRidesCount,
       pendingBookingsCount,
-      completedTodayCount
+      completedTodayCount,
+      activeComplaintsCount,
+      pendingApprovalsCount,
+      recentApplications,
+      recentComplaints
     ] = await Promise.all([
-      Partner.countDocuments({ status: 'approved', isOnline: true }), // Assuming we add isOnline later, or just active approved
+      Partner.countDocuments({ status: 'approved', isOnline: true }), // For DB fallback, though we use sockets for live
       Booking.countDocuments({ status: { $in: ['ACCEPTED', 'ENROUTE', 'ARRIVED', 'IN_PROGRESS'] } }),
       Booking.countDocuments({ status: 'PENDING' }),
-      Booking.countDocuments({ status: 'COMPLETED', createdAt: { $gte: today } })
+      Booking.countDocuments({ status: 'COMPLETED', createdAt: { $gte: today } }),
+      Complaint.countDocuments({ status: { $in: ['OPEN', 'IN_PROGRESS'] } }),
+      Partner.countDocuments({ applicationStatus: 'submitted' }),
+      Partner.find({ applicationStatus: 'submitted' }).select('personalInfo.fullName vehicleDetails.vehicleNumber applicationStatus createdAt').sort({ createdAt: -1 }).limit(5),
+      Complaint.find({ status: { $in: ['OPEN', 'IN_PROGRESS'] } }).populate('raisedBy', 'name').sort({ priority: -1, createdAt: -1 }).limit(5)
     ]);
 
     res.status(200).json({
@@ -30,6 +39,10 @@ export const getOperationsOverview = async (req, res) => {
         ongoingRides: ongoingRidesCount,
         pendingBookings: pendingBookingsCount,
         completedToday: completedTodayCount,
+        activeComplaints: activeComplaintsCount,
+        pendingApprovals: pendingApprovalsCount,
+        recentApplications,
+        recentComplaints,
       }
     });
   } catch (error) {

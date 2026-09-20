@@ -1,4 +1,7 @@
 import Admin from '../models/Admin.js';
+import User from '../models/User.js';
+import Partner from '../models/Partner.js';
+import Booking from '../models/Booking.js';
 import jwt from 'jsonwebtoken';
 
 // @desc    Get all admins (with search & filter)
@@ -149,5 +152,42 @@ export const impersonateAdmin = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// @desc    Get macro-level platform stats for Super Admin Dashboard
+// @route   GET /api/admins/dashboard-stats
+// @access  Private (SuperAdmin)
+export const getSuperAdminStats = async (req, res) => {
+  try {
+    const [
+      totalUsers,
+      totalPartners,
+      totalAdmins,
+      totalTrips,
+      completedBookings
+    ] = await Promise.all([
+      User.countDocuments(),
+      Partner.countDocuments(),
+      Admin.countDocuments(),
+      Booking.countDocuments(),
+      Booking.find({ status: 'COMPLETED' }).select('fare.estimated')
+    ]);
+
+    const totalRevenue = completedBookings.reduce((sum, b) => sum + (b.fare?.estimated || 0), 0);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        totalUsers,
+        totalPartners,
+        totalAdmins,
+        totalTrips,
+        totalRevenue
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching super admin stats:', error);
+    res.status(500).json({ success: false, message: 'Server error while fetching stats' });
   }
 };

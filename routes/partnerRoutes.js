@@ -26,7 +26,9 @@ import {
   updateBookingStatus,
   getPartnerEarnings,
   getPartnerNotifications,
-  markNotificationsRead
+  markNotificationsRead,
+  getDashboardStats,
+  acceptBooking
 } from '../controllers/partnerOperationsController.js';
 import { protectPartner } from '../middleware/partnerAuthMiddleware.js';
 import { protect } from '../middleware/authMiddleware.js';
@@ -58,9 +60,11 @@ router.get('/profile', protectPartner, getPartnerProfile);
 // ── Protected: Partner Bookings ──────────────────────────────────────────────
 router.get('/bookings', protectPartner, getPartnerBookings);
 router.get('/bookings/:id', protectPartner, getPartnerBookingById);
+router.post('/bookings/:id/accept', protectPartner, acceptBooking);
 router.put('/bookings/:id/status', protectPartner, updateBookingStatus);
 
-// ── Protected: Earnings & Notifications ──────────────────────────────────────
+// ── Protected: Earnings & Notifications & Stats ──────────────────────────────────────
+router.get('/dashboard-stats', protectPartner, getDashboardStats);
 router.get('/earnings', protectPartner, getPartnerEarnings);
 router.get('/notifications', protectPartner, getPartnerNotifications);
 router.put('/notifications/read', protectPartner, markNotificationsRead);

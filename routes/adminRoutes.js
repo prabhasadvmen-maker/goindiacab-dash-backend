@@ -6,6 +6,7 @@ import {
   toggleAdminStatus,
   deleteAdmin,
   impersonateAdmin,
+  getSuperAdminStats,
 } from '../controllers/adminController.js';
 import {
   getUsers,
@@ -53,6 +54,8 @@ router.use(protect);
 router.route('/')
   .get(getAdmins)
   .post(createAdmin);
+
+router.get('/dashboard-stats', getSuperAdminStats);
 
 // Moved generic /:id routes to the bottom of the file
 
