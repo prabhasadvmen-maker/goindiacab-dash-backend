@@ -1,97 +1,85 @@
 import axios from 'axios';
 
-const getBaseUrl = () => 'https://maps.googleapis.com/maps/api';
+const getGeoapifyKey = () => process.env.GEOAPIFY_API_KEY;
 
-/**
- * Get place predictions based on user input
- * @param {string} input - Text typed by user
- * @returns {Array} - Array of place suggestions
- */
 export const getAutoCompleteSuggestions = async (input) => {
   if (!input) return [];
   
   try {
-    const response = await axios.get(`${getBaseUrl()}/place/autocomplete/json`, {
+    const response = await axios.get(`https://api.geoapify.com/v1/geocode/autocomplete`, {
       params: {
-        input,
-        key: process.env.GOOGLE_MAPS_API_KEY,
-        components: 'country:in' // Restrict to India for this project
+        text: input,
+        apiKey: getGeoapifyKey(),
+        filter: 'countrycode:in' // Restrict to India
       }
     });
 
-    if (response.data.status === 'OK') {
-      return response.data.predictions.map(p => ({
-        placeId: p.place_id,
-        description: p.description,
-        mainText: p.structured_formatting?.main_text,
-        secondaryText: p.structured_formatting?.secondary_text
+    if (response.data && response.data.features) {
+      return response.data.features.map(f => ({
+        placeId: f.properties.place_id,
+        description: f.properties.formatted,
+        mainText: f.properties.address_line1 || f.properties.name,
+        secondaryText: f.properties.address_line2,
+        lat: f.properties.lat, // Geoapify provides lat/lon immediately
+        lng: f.properties.lon
       }));
     }
     return [];
   } catch (error) {
-    console.error('Maps API Autocomplete error:', error.message);
+    console.error('Geoapify Autocomplete error:', error.message);
     throw new Error('Failed to fetch location suggestions');
   }
 };
 
-/**
- * Get coordinates (lat, lng) and details for a Place ID
- * @param {string} placeId - Google Place ID
- * @returns {Object} - { lat, lng, address }
- */
 export const getPlaceDetails = async (placeId) => {
   if (!placeId) throw new Error('Place ID is required');
 
   try {
-    const response = await axios.get(`${getBaseUrl()}/place/details/json`, {
+    const response = await axios.get(`https://api.geoapify.com/v2/place-details`, {
       params: {
-        place_id: placeId,
-        fields: 'geometry,formatted_address',
-        key: process.env.GOOGLE_MAPS_API_KEY
+        id: placeId,
+        apiKey: getGeoapifyKey()
       }
     });
 
-    if (response.data.status === 'OK') {
-      const location = response.data.result.geometry.location;
+    if (response.data && response.data.features && response.data.features.length > 0) {
+      const location = response.data.features[0].properties;
       return {
         lat: location.lat,
-        lng: location.lng,
-        address: response.data.result.formatted_address
+        lng: location.lon,
+        address: location.formatted
       };
     }
     throw new Error('Place details not found');
   } catch (error) {
-    console.error('Maps API Place Details error:', error.message);
+    console.error('Geoapify Place Details error:', error.message);
     throw new Error('Failed to fetch location details');
   }
 };
 
-/**
- * Get real road distance and duration between two coordinates
- * @param {Object} origin - { lat, lng }
- * @param {Object} destination - { lat, lng }
- * @returns {Object} - { distance: { text, value }, duration: { text, value } }
- */
 export const getDistanceMatrix = async (origin, destination) => {
   try {
-    const response = await axios.get(`${getBaseUrl()}/distancematrix/json`, {
+    const response = await axios.get(`https://api.geoapify.com/v1/routing`, {
       params: {
-        origins: `${origin.lat},${origin.lng}`,
-        destinations: `${destination.lat},${destination.lng}`,
-        key: process.env.GOOGLE_MAPS_API_KEY
+        waypoints: `${origin.lat},${origin.lng}|${destination.lat},${destination.lng}`,
+        mode: 'drive',
+        apiKey: getGeoapifyKey()
       }
     });
 
-    if (response.data.status === 'OK' && response.data.rows[0].elements[0].status === 'OK') {
-      const element = response.data.rows[0].elements[0];
+    if (response.data && response.data.features && response.data.features.length > 0) {
+      const properties = response.data.features[0].properties;
+      const distanceMeters = properties.distance;
+      const durationSeconds = properties.time;
+
       return {
-        distance: element.distance, // { text: '5.2 km', value: 5200 }
-        duration: element.duration  // { text: '15 mins', value: 900 }
+        distance: { text: `${(distanceMeters / 1000).toFixed(1)} km`, value: distanceMeters },
+        duration: { text: `${Math.round(durationSeconds / 60)} mins`, value: durationSeconds }
       };
     }
     throw new Error('Unable to calculate distance');
   } catch (error) {
-    console.error('Maps API Distance Matrix error:', error.message);
+    console.error('Geoapify Distance Routing error:', error.message);
     throw new Error('Failed to calculate exact distance');
   }
 };

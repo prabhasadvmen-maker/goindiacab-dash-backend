@@ -13,6 +13,7 @@ import mapRoutes from './routes/mapRoutes.js';
 import configRoutes from './routes/configRoutes.js';
 import vehicleRoutes from './routes/vehicleRoutes.js';
 import adminComplaintRoutes from './routes/adminComplaintRoutes.js';
+import partnerGranularRoutes from './routes/partnerGranularRoutes.js';
 import http from 'http';
 import { initSocket } from './socket.js';
 
@@ -58,6 +59,7 @@ app.use('/api/admins', adminRoutes);
 app.use('/api/admins/complaints', adminComplaintRoutes);
 app.use('/api/admin/auth', adminAuthRoutes);
 app.use('/api/partner', partnerRoutes);
+app.use('/api/v2/partner', partnerGranularRoutes); // Step 1 Granular APIs
 app.use('/api/v1/user/auth/send-otp', otpLimiter);
 app.use('/api/v1/user/auth/resend-otp', otpLimiter);
 app.use('/api/v1/user/auth/login', authLimiter);

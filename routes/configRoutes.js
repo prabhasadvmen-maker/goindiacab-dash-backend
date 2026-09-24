@@ -30,7 +30,7 @@ router.get('/', async (req, res) => {
           phone: settings.supportPhone,
         },
         apiKeys: {
-          googleMaps: process.env.GOOGLE_MAPS_API_KEY || '',
+          geoapify: process.env.GEOAPIFY_API_KEY || '',
           razorpayKeyId: process.env.RAZORPAY_KEY_ID || '',
         }
       }

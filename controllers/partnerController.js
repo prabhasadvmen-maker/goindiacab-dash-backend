@@ -27,14 +27,17 @@ export const sendPartnerOTP = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Please provide a valid 10-digit mobile number.' });
     }
 
-    const canResend = await canResendOTP(phone);
-    if (!canResend) {
-      return res.status(429).json({ success: false, message: 'Please wait 60 seconds before requesting a new OTP.' });
+    let partner = await Partner.findOne({ phone });
+    if (!partner) {
+      partner = await Partner.create({ phone });
     }
 
-    await sendOTP(phone);
+    // Mock OTP — replace with real SMS in production
+    partner.otp = '1234';
+    partner.otpExpires = Date.now() + 10 * 60 * 1000;
+    await partner.save();
 
-    return res.status(200).json({ success: true, message: 'OTP sent successfully.' });
+    return res.status(200).json({ success: true, message: 'OTP sent successfully (Mock: 1234).' });
   } catch (error) {
     console.error('sendPartnerOTP error:', error.message);
     return res.status(500).json({ success: false, message: error.message || 'Failed to send OTP.' });
@@ -53,20 +56,16 @@ export const verifyPartnerOTP = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Phone and OTP are required.' });
     }
 
-    const result = await verifyOTP(phone, otp);
-    if (!result.success) {
-      return res.status(400).json({ success: false, message: result.message });
+    const partner = await Partner.findOne({ phone });
+    if (!partner || partner.otp !== otp || partner.otpExpires < Date.now()) {
+      return res.status(400).json({ success: false, message: 'Invalid or expired OTP.' });
     }
 
-    // Find or create partner record
-    let partner = await Partner.findOne({ phone });
-    if (!partner) {
-      partner = await Partner.create({ phone, isPhoneVerified: true, currentStep: 3 });
-    } else {
-      partner.isPhoneVerified = true;
-      if (partner.currentStep < 3) partner.currentStep = 3;
-      await partner.save();
-    }
+    partner.otp = undefined;
+    partner.otpExpires = undefined;
+    partner.isPhoneVerified = true;
+    if (partner.currentStep < 3) partner.currentStep = 3;
+    await partner.save();
 
     const token = signToken(partner._id, partner.phone);
 
@@ -531,7 +530,7 @@ export const submitApplication = async (req, res) => {
   try {
     const partner = req.partner;
 
-    if (partner.onboardingPayment.status !== 'paid') {
+    if (!partner.onboardingPayment || !['paid', 'completed'].includes(partner.onboardingPayment.status)) {
       return res.status(400).json({ success: false, message: 'Onboarding payment is required before submission.' });
     }
 

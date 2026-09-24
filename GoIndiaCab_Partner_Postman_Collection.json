@@ -1,0 +1,2879 @@
+{
+  "info": {
+    "name": "GoIndiaCab Partner APIs",
+    "description": "Complete 87 APIs for Partner (Driver) - V2 Granular + V1 Unique",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Step 1: Auth & Basic Profile",
+      "item": [
+        {
+          "name": "1. login",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/partner/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "partner",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"phone\":\"9876543210\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "2. verify",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/partner/auth/verify",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "partner",
+                "auth",
+                "verify"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"phone\":\"9876543210\", \"otp\":\"1234\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "3. resend",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/partner/auth/resend",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "partner",
+                "auth",
+                "resend"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"phone\":\"9876543210\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "4. logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/partner/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "partner",
+                "auth",
+                "logout"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "5. me",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/partner/profile/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "partner",
+                "profile",
+                "me"
+              ]
+            }
+          }
+        },
+        {
+          "name": "6. name",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/partner/profile/name",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "partner",
+                "profile",
+                "name"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\":\"John Doe\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "7. email",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/partner/profile/email",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "partner",
+                "profile",
+                "email"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"john@example.com\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "8. dob",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/partner/profile/dob",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "partner",
+                "profile",
+                "dob"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"dob\":\"1990-01-01\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "9. gender",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/partner/profile/gender",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "partner",
+                "profile",
+                "gender"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"gender\":\"Male\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "10. photo",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/partner/profile/photo",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "partner",
+                "profile",
+                "photo"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"photoUrl\":\"http://...\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Step 2: Address & Vehicle Basics",
+      "item": [
+        {
+          "name": "11. street",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/partner/profile/address/street",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "partner",
+                "profile",
+                "address",
+                "street"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"street\":\"123 Main\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "12. city",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/partner/profile/address/city",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "partner",
+                "profile",
+                "address",
+                "city"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"city\":\"New Delhi\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "13. state",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/partner/profile/address/state",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "partner",
+                "profile",
+                "address",
+                "state"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"state\":\"Delhi\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "14. pincode",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/partner/profile/address/pincode",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "partner",
+                "profile",
+                "address",
+                "pincode"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"pincode\":\"110001\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "15. check-eligibility",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/partner/vehicle/check-eligibility",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "partner",
+                "vehicle",
+                "check-eligibility"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"registrationYear\":2021}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "16. make",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/partner/vehicle/make",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "partner",
+                "vehicle",
+                "make"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"make\":\"Maruti\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "17. model",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/partner/vehicle/model",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "partner",
+                "vehicle",
+                "model"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"model\":\"Swift\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "18. year",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/partner/vehicle/year",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "partner",
+                "vehicle",
+                "year"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"year\":2021}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "19. color",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/partner/vehicle/color",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "partner",
+                "vehicle",
+                "color"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"color\":\"White\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "20. plate-number",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/partner/vehicle/plate-number",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "partner",
+                "vehicle",
+                "plate-number"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"plateNumber\":\"DL1ZC1234\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Step 3: Driver KYC & Vehicle Docs",
+      "item": [
+        {
+          "name": "21. dl-front",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/partner/profile/kyc/dl-front",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "partner",
+                "profile",
+                "kyc",
+                "dl-front"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"imageUrl\":\"http://...\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "22. dl-back",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/partner/profile/kyc/dl-back",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "partner",
+                "profile",
+                "kyc",
+                "dl-back"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"imageUrl\":\"http://...\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "23. aadhaar-front",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/partner/profile/kyc/aadhaar-front",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "partner",
+                "profile",
+                "kyc",
+                "aadhaar-front"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"imageUrl\":\"http://...\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "24. aadhaar-back",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/partner/profile/kyc/aadhaar-back",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "partner",
+                "profile",
+                "kyc",
+                "aadhaar-back"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"imageUrl\":\"http://...\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "25. pan",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/partner/profile/kyc/pan",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "partner",
+                "profile",
+                "kyc",
+                "pan"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"imageUrl\":\"http://...\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "26. rc",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/partner/vehicle/docs/rc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "partner",
+                "vehicle",
+                "docs",
+                "rc"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"imageUrl\":\"http://...\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "27. insurance",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/partner/vehicle/docs/insurance",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "partner",
+                "vehicle",
+                "docs",
+                "insurance"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"imageUrl\":\"http://...\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "28. permit",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/partner/vehicle/docs/permit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "partner",
+                "vehicle",
+                "docs",
+                "permit"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"imageUrl\":\"http://...\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "29. fitness",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/partner/vehicle/docs/fitness",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "partner",
+                "vehicle",
+                "docs",
+                "fitness"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"imageUrl\":\"http://...\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "30. front",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/partner/vehicle/photos/front",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "partner",
+                "vehicle",
+                "photos",
+                "front"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"imageUrl\":\"http://...\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Step 4: Vehicle Photos, Bank & Payment",
+      "item": [
+        {
+          "name": "31. back",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/partner/vehicle/photos/back",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "partner",
+                "vehicle",
+                "photos",
+                "back"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"imageUrl\":\"http://...\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "32. left",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/partner/vehicle/photos/left",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "partner",
+                "vehicle",
+                "photos",
+                "left"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"imageUrl\":\"http://...\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "33. right",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/partner/vehicle/photos/right",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "partner",
+                "vehicle",
+                "photos",
+                "right"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"imageUrl\":\"http://...\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "34. account-name",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/partner/profile/bank/account-name",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "partner",
+                "profile",
+                "bank",
+                "account-name"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"accountName\":\"John Doe\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "35. account-number",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/partner/profile/bank/account-number",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "partner",
+                "profile",
+                "bank",
+                "account-number"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"accountNumber\":\"123456789\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "36. ifsc",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/partner/profile/bank/ifsc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "partner",
+                "profile",
+                "bank",
+                "ifsc"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"ifsc\":\"HDFC0001\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "37. bank-name",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/partner/profile/bank/bank-name",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "partner",
+                "profile",
+                "bank",
+                "bank-name"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"bankName\":\"HDFC\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "38. payment-initiate",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/partner/onboarding/payment-initiate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "partner",
+                "onboarding",
+                "payment-initiate"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "39. payment-verify",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/partner/onboarding/payment-verify",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "partner",
+                "onboarding",
+                "payment-verify"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"orderId\":\"123\",\"paymentId\":\"456\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "40. submit-application",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/partner/onboarding/submit-application",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "partner",
+                "onboarding",
+                "submit-application"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Step 5: Bookings & Active Rides",
+      "item": [
+        {
+          "name": "41. active",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/partner/bookings/active",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "partner",
+                "bookings",
+                "active"
+              ]
+            }
+          }
+        },
+        {
+          "name": "42. history",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/partner/bookings/history",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "partner",
+                "bookings",
+                "history"
+              ]
+            }
+          }
+        },
+        {
+          "name": "43. requests",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/partner/bookings/requests",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "partner",
+                "bookings",
+                "requests"
+              ]
+            }
+          }
+        },
+        {
+          "name": "44. accept",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/partner/bookings/:id/accept",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "partner",
+                "bookings",
+                ":id",
+                "accept"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "45. decline",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/partner/bookings/:id/decline",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "partner",
+                "bookings",
+                ":id",
+                "decline"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "46. arrive",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/partner/bookings/:id/arrive",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "partner",
+                "bookings",
+                ":id",
+                "arrive"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "47. start",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/partner/bookings/:id/start",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "partner",
+                "bookings",
+                ":id",
+                "start"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"otp\":\"1234\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "48. complete",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/partner/bookings/:id/complete",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "partner",
+                "bookings",
+                ":id",
+                "complete"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "49. cancel",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/partner/bookings/:id/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "partner",
+                "bookings",
+                ":id",
+                "cancel"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"reason\":\"delayed\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "50. route",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/partner/bookings/:id/route",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "partner",
+                "bookings",
+                ":id",
+                "route"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Step 6: Finance, Wallet & Earnings",
+      "item": [
+        {
+          "name": "51. balance",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/partner/finance/wallet/balance",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "partner",
+                "finance",
+                "wallet",
+                "balance"
+              ]
+            }
+          }
+        },
+        {
+          "name": "52. transactions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/partner/finance/wallet/transactions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "partner",
+                "finance",
+                "wallet",
+                "transactions"
+              ]
+            }
+          }
+        },
+        {
+          "name": "53. withdraw",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/partner/finance/wallet/withdraw",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "partner",
+                "finance",
+                "wallet",
+                "withdraw"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"amount\":100}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "54. today",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/partner/finance/earnings/today",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "partner",
+                "finance",
+                "earnings",
+                "today"
+              ]
+            }
+          }
+        },
+        {
+          "name": "55. weekly",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/partner/finance/earnings/weekly",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "partner",
+                "finance",
+                "earnings",
+                "weekly"
+              ]
+            }
+          }
+        },
+        {
+          "name": "56. monthly",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/partner/finance/earnings/monthly",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "partner",
+                "finance",
+                "earnings",
+                "monthly"
+              ]
+            }
+          }
+        },
+        {
+          "name": "57. history",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/partner/finance/settlements/history",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "partner",
+                "finance",
+                "settlements",
+                "history"
+              ]
+            }
+          }
+        },
+        {
+          "name": "58. pending",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/partner/finance/settlements/pending",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "partner",
+                "finance",
+                "settlements",
+                "pending"
+              ]
+            }
+          }
+        },
+        {
+          "name": "59. :tripId",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/partner/finance/invoices/:tripId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "partner",
+                "finance",
+                "invoices",
+                ":tripId"
+              ]
+            }
+          }
+        },
+        {
+          "name": "60. tds-summary",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/partner/finance/taxes/tds-summary",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "partner",
+                "finance",
+                "taxes",
+                "tds-summary"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Step 7: Support, SOS & Settings",
+      "item": [
+        {
+          "name": "61. tickets",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/partner/support/tickets",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "partner",
+                "support",
+                "tickets"
+              ]
+            }
+          }
+        },
+        {
+          "name": "62. :id",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/partner/support/tickets/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "partner",
+                "support",
+                "tickets",
+                ":id"
+              ]
+            }
+          }
+        },
+        {
+          "name": "63. create",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/partner/support/tickets/create",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "partner",
+                "support",
+                "tickets",
+                "create"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"subject\":\"Issue\",\"description\":\"...\",\"tripId\":\"...\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "64. reply",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/partner/support/tickets/:id/reply",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "partner",
+                "support",
+                "tickets",
+                ":id",
+                "reply"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"message\":\"...\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "65. sos",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/partner/support/emergency/sos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "partner",
+                "support",
+                "emergency",
+                "sos"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"lat\":28,\"lng\":77,\"tripId\":\"...\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "66. preferences",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/partner/settings/preferences",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "partner",
+                "settings",
+                "preferences"
+              ]
+            }
+          }
+        },
+        {
+          "name": "67. language",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/partner/settings/language",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "partner",
+                "settings",
+                "language"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"language\":\"en\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "68. navigation",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/partner/settings/navigation",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "partner",
+                "settings",
+                "navigation"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"appName\":\"GMAP\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "69. notifications",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/partner/settings/notifications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "partner",
+                "settings",
+                "notifications"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"enabled\":true}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "70. device-token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/partner/settings/device-token",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "partner",
+                "settings",
+                "device-token"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"token\":\"...\",\"deviceOs\":\"android\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Step 8: Performance, Referrals & Alerts",
+      "item": [
+        {
+          "name": "71. ratings",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/partner/performance/ratings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "partner",
+                "performance",
+                "ratings"
+              ]
+            }
+          }
+        },
+        {
+          "name": "72. metrics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/partner/performance/metrics",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "partner",
+                "performance",
+                "metrics"
+              ]
+            }
+          }
+        },
+        {
+          "name": "73. logs",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/partner/activity/logs",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "partner",
+                "activity",
+                "logs"
+              ]
+            }
+          }
+        },
+        {
+          "name": "74. status",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/partner/activity/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "partner",
+                "activity",
+                "status"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"isOnline\":true}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "75. location",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/partner/activity/location",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "partner",
+                "activity",
+                "location"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"lat\":28,\"lng\":77}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "76. code",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/partner/referrals/code",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "partner",
+                "referrals",
+                "code"
+              ]
+            }
+          }
+        },
+        {
+          "name": "77. history",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/partner/referrals/history",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "partner",
+                "referrals",
+                "history"
+              ]
+            }
+          }
+        },
+        {
+          "name": "78. claim",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/partner/referrals/claim",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "partner",
+                "referrals",
+                "claim"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "79. all",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/partner/notifications/all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "partner",
+                "notifications",
+                "all"
+              ]
+            }
+          }
+        },
+        {
+          "name": "80. read",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/partner/notifications/:id/read",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "partner",
+                "notifications",
+                ":id",
+                "read"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Unique V1 APIs",
+      "item": [
+        {
+          "name": "81. bookings?status=ACTIVE",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/bookings?status=ACTIVE",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "bookings?status=ACTIVE"
+              ]
+            }
+          }
+        },
+        {
+          "name": "82. :id",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/bookings/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "bookings",
+                ":id"
+              ]
+            }
+          }
+        },
+        {
+          "name": "83. status",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/bookings/:id/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "bookings",
+                ":id",
+                "status"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"status\":\"ARRIVED\",\"cancelReason\":\"\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "84. dashboard-stats",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/dashboard-stats",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "dashboard-stats"
+              ]
+            }
+          }
+        },
+        {
+          "name": "85. applications?status=submitted&page=1&limit=20",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/admin/applications?status=submitted&page=1&limit=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "admin",
+                "applications?status=submitted&page=1&limit=20"
+              ]
+            }
+          }
+        },
+        {
+          "name": "86. :partnerId",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/admin/applications/:partnerId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "admin",
+                "applications",
+                ":partnerId"
+              ]
+            }
+          }
+        },
+        {
+          "name": "87. :partnerId",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/partner/admin/review/:partnerId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "partner",
+                "admin",
+                "review",
+                ":partnerId"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"decision\":\"approve\",\"rejectionReason\":\"\",\"correctionFields\":[],\"correctionNote\":\"\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "YOUR_JWT_TOKEN",
+      "type": "string"
+    }
+  ]
+}

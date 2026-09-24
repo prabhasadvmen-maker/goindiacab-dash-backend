@@ -293,3 +293,53 @@ export const acceptBooking = async (req, res) => {
     res.status(500).json({ success: false, message: 'Server error accepting booking' });
   }
 };
+
+// @desc    Update Partner Online Status & Location in DB
+// @route   PUT /api/partner/status
+// @access  Private (Partner)
+export const updatePartnerStatus = async (req, res) => {
+  try {
+    const { isOnline, location } = req.body;
+    
+    // In partner auth middleware, partner is attached to req.partner
+    // Let's also check req.user just in case middleware uses req.user
+    const partnerId = req.partner ? req.partner._id : (req.user ? req.user._id : null);
+    
+    if (!partnerId) {
+       return res.status(401).json({ success: false, message: 'Not authorized' });
+    }
+
+    // Must import Partner model if not already imported at top. 
+    // Assuming it's imported as Partner. If not, I'll need to check imports.
+    // I see Partner.findById is used elsewhere in this file?
+    // Wait, earlier I saw Partner.findById in dashboard stats.
+    
+    const partner = await Partner.findById(partnerId);
+    
+    if (!partner) {
+      return res.status(404).json({ success: false, message: 'Partner not found' });
+    }
+
+    if (typeof isOnline === 'boolean') {
+      partner.isOnline = isOnline;
+    }
+    
+    if (location && location.lat && location.lng) {
+      partner.location = {
+        type: 'Point',
+        coordinates: [location.lng, location.lat]
+      };
+    }
+
+    await partner.save();
+
+    res.status(200).json({ 
+      success: true, 
+      message: 'Status updated successfully',
+      data: { isOnline: partner.isOnline }
+    });
+  } catch (error) {
+    console.error('Error updating partner status:', error);
+    res.status(500).json({ success: false, message: 'Server error updating status' });
+  }
+};

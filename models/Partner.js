@@ -211,6 +211,17 @@ const partnerSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
+
+    // OTP fields
+    otp: { type: String, default: null },
+    otpExpires: { type: Date, default: null },
+
+    // Online status & live location
+    isOnline: { type: Boolean, default: false },
+    location: {
+      type: { type: String, enum: ['Point'], default: 'Point' },
+      coordinates: { type: [Number], default: [0, 0] },
+    },
   },
   { timestamps: true }
 );
