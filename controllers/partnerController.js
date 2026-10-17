@@ -32,6 +32,14 @@ export const sendPartnerOTP = async (req, res) => {
       partner = await Partner.create({ phone });
     }
 
+    // Cooldown: block if last OTP was sent less than 60s ago
+    const COOLDOWN_MS = 60 * 1000;
+    const lastSentAt = partner.otpExpires ? partner.otpExpires - 10 * 60 * 1000 : 0;
+    if (lastSentAt && Date.now() - lastSentAt < COOLDOWN_MS) {
+      const waitSec = Math.ceil((COOLDOWN_MS - (Date.now() - lastSentAt)) / 1000);
+      return res.status(429).json({ success: false, message: `Please wait ${waitSec} seconds before requesting a new OTP.` });
+    }
+
     // Mock OTP — replace with real SMS in production
     partner.otp = '1234';
     partner.otpExpires = Date.now() + 10 * 60 * 1000;

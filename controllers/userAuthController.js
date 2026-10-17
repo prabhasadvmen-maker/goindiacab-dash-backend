@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
-import { sendOTP, verifyOTP, canResendOTP } from '../services/otpService.js';
+import { sendOTP, verifyOTP } from '../services/otpService.js';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -161,16 +161,14 @@ export const sendUserOTP = async (req, res) => {
     if (!phone || !/^\d{10}$/.test(phone)) {
       return res.status(400).json({ success: false, message: 'Please provide a valid 10-digit phone number.' });
     }
-    if (!await canResendOTP(phone)) {
-      return res.status(429).json({ success: false, message: 'Please wait 60 seconds before requesting a new OTP.' });
-    }
 
     await sendOTP(phone);
 
     return res.status(200).json({ success: true, message: 'OTP sent successfully.' });
   } catch (error) {
     console.error('sendUserOTP error:', error.message);
-    return res.status(500).json({ success: false, message: error.message || 'Failed to send OTP.' });
+    const isCooldown = error.message.startsWith('Please wait');
+    return res.status(isCooldown ? 429 : 500).json({ success: false, message: error.message || 'Failed to send OTP.' });
   }
 };
 
@@ -186,24 +184,18 @@ export const resendUserOTP = async (req, res) => {
     if (!phone || !/^\d{10}$/.test(phone)) {
       return res.status(400).json({ success: false, message: 'Please provide a valid 10-digit phone number.' });
     }
-    if (!await canResendOTP(phone)) {
-      return res.status(429).json({
-        success: false,
-        message: 'Please wait 60 seconds before requesting a new OTP.',
-        retryAfter: 60,
-      });
-    }
 
     await sendOTP(phone);
 
-    return res.status(200).json({
-      success: true,
-      message: 'OTP resent successfully.',
-      expiresIn: 300,
-    });
+    return res.status(200).json({ success: true, message: 'OTP resent successfully.', expiresIn: 300 });
   } catch (error) {
     console.error('resendUserOTP error:', error.message);
-    return res.status(500).json({ success: false, message: error.message || 'Failed to resend OTP.' });
+    const isCooldown = error.message.startsWith('Please wait');
+    return res.status(isCooldown ? 429 : 500).json({
+      success: false,
+      message: error.message || 'Failed to resend OTP.',
+      ...(isCooldown && { retryAfter: 60 }),
+    });
   }
 };
 
@@ -377,9 +369,6 @@ export const forgotPassword = async (req, res) => {
     if (!user) {
       return res.status(200).json({ success: true, message: 'If this account exists, an OTP has been sent.' });
     }
-    if (!await canResendOTP(user.phone)) {
-      return res.status(429).json({ success: false, message: 'Please wait 60 seconds before requesting a new OTP.' });
-    }
 
     await sendOTP(user.phone);
 
@@ -390,7 +379,8 @@ export const forgotPassword = async (req, res) => {
     });
   } catch (error) {
     console.error('forgotPassword error:', error.message);
-    return res.status(500).json({ success: false, message: 'Server error. Please try again.' });
+    const isCooldown = error.message.startsWith('Please wait');
+    return res.status(isCooldown ? 429 : 500).json({ success: false, message: error.message || 'Server error. Please try again.' });
   }
 };
 

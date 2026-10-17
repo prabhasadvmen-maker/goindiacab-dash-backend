@@ -18,9 +18,17 @@ export const initiateLogin = async (req, res) => {
     if (!partner) {
       partner = await Partner.create({ phone });
     }
-    
+
+    // Cooldown: block if last OTP was sent less than 60s ago
+    const COOLDOWN_MS = 60 * 1000;
+    const lastSentAt = partner.otpExpires ? partner.otpExpires - 10 * 60 * 1000 : 0;
+    if (lastSentAt && Date.now() - lastSentAt < COOLDOWN_MS) {
+      const waitSec = Math.ceil((COOLDOWN_MS - (Date.now() - lastSentAt)) / 1000);
+      return res.status(429).json({ success: false, message: `Please wait ${waitSec} seconds before requesting a new OTP.` });
+    }
+
     // In production, send real SMS here. Mocking for now.
-    const otp = '1234'; 
+    const otp = '1234';
     partner.otp = otp;
     partner.otpExpires = Date.now() + 10 * 60 * 1000;
     await partner.save();
@@ -61,6 +69,14 @@ export const resendOtp = async (req, res) => {
     const { phone } = req.body;
     const partner = await Partner.findOne({ phone });
     if (!partner) return res.status(404).json({ success: false, message: 'Partner not found' });
+
+    // Cooldown: block if last OTP was sent less than 60s ago
+    const COOLDOWN_MS = 60 * 1000;
+    const lastSentAt = partner.otpExpires ? partner.otpExpires - 10 * 60 * 1000 : 0;
+    if (lastSentAt && Date.now() - lastSentAt < COOLDOWN_MS) {
+      const waitSec = Math.ceil((COOLDOWN_MS - (Date.now() - lastSentAt)) / 1000);
+      return res.status(429).json({ success: false, message: `Please wait ${waitSec} seconds before requesting a new OTP.` });
+    }
 
     partner.otp = '1234'; // Mock
     partner.otpExpires = Date.now() + 10 * 60 * 1000;
@@ -487,7 +503,8 @@ export const startTrip = async (req, res) => {
   try {
     const { otp } = req.body;
     const booking = await Booking.findOne({ _id: req.params.id, partner: req.partner._id });
-    if(booking.otp !== otp) return res.status(400).json({ success: false, message: 'Invalid OTP' });
+    if (!booking) return res.status(404).json({ success: false, message: 'Booking not found' });
+    if (booking.otp !== otp) return res.status(400).json({ success: false, message: 'Invalid OTP' });
     
     booking.status = 'IN_PROGRESS';
     await booking.save();
