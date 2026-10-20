@@ -34,7 +34,8 @@ export const updateSettings = async (req, res) => {
       minAndroidVersion,
       forceUpdate,
       isWalletEnabled,
-      isReferralEnabled
+      isReferralEnabled,
+      webPartPaymentPercent
     } = req.body;
 
     let settings = await Setting.findOne();
@@ -50,6 +51,7 @@ export const updateSettings = async (req, res) => {
     if (forceUpdate !== undefined) settings.forceUpdate = forceUpdate;
     if (isWalletEnabled !== undefined) settings.isWalletEnabled = isWalletEnabled;
     if (isReferralEnabled !== undefined) settings.isReferralEnabled = isReferralEnabled;
+    if (webPartPaymentPercent !== undefined) settings.webPartPaymentPercent = webPartPaymentPercent;
 
     await settings.save();
 

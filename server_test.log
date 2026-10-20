@@ -1,4 +1,0 @@
-◇ injected env (27) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
-◇ injected env (0) from .env // tip: ⌘ enable debugging { debug: true }
-MongoDB Connected: ac-6t3dgau-shard-00-02.worlu4k.mongodb.net
-Server & Socket.io running on port 5000

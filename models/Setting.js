@@ -32,6 +32,12 @@ const settingSchema = new mongoose.Schema({
   isReferralEnabled: {
     type: Boolean,
     default: true,
+  },
+  webPartPaymentPercent: {
+    type: Number,
+    default: 25, // % payable online at booking time on the public website
+    min: 1,
+    max: 100,
   }
 }, { timestamps: true });
 

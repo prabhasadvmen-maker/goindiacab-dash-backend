@@ -14,6 +14,8 @@ import configRoutes from './routes/configRoutes.js';
 import vehicleRoutes from './routes/vehicleRoutes.js';
 import adminComplaintRoutes from './routes/adminComplaintRoutes.js';
 import partnerGranularRoutes from './routes/partnerGranularRoutes.js';
+import websiteRoutes from './routes/websiteRoutes.js';
+import adminWebsiteRoutes from './routes/adminWebsiteRoutes.js';
 import http from 'http';
 import { initSocket } from './socket.js';
 
@@ -26,8 +28,13 @@ const server = http.createServer(app);
 initSocket(server);
 
 // CORS setup
+// FRONTEND_URL (dashboard) and WEBSITE_URL (public site) may each hold comma-separated origins.
+const allowedOrigins = [process.env.FRONTEND_URL || 'http://localhost:5173', process.env.WEBSITE_URL || 'http://localhost:3000']
+  .flatMap((v) => v.split(','))
+  .map((v) => v.trim().replace(/\/$/, ''))
+  .filter(Boolean);
 const corsOptions = {
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: (origin, cb) => cb(null, !origin || allowedOrigins.includes(origin)),
   credentials: true,
 };
 app.use(cors(corsOptions));
@@ -55,6 +62,7 @@ const otpLimiter = rateLimit({
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/admins/website', adminWebsiteRoutes); // must stay above /api/admins
 app.use('/api/admins', adminRoutes);
 app.use('/api/admins/complaints', adminComplaintRoutes);
 app.use('/api/admin/auth', adminAuthRoutes);
@@ -69,6 +77,7 @@ app.use('/api/v1/user/operations', userRoutes);
 app.use('/api/v1/maps', mapRoutes);
 app.use('/api/config', configRoutes);
 app.use('/api/vehicles', vehicleRoutes);
+app.use('/api', websiteRoutes); // Public website APIs
 
 // Health check endpoint
 app.get('/', (req, res) => {
