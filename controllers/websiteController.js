@@ -255,23 +255,43 @@ export const createPaymentOrder = async (req, res) => {
     if (booking.status === 'cancelled') return fail(res, 409, 'BOOKING_CANCELLED', 'Booking is cancelled');
     if (booking.payment.status === 'paid') return fail(res, 409, 'ALREADY_PAID', 'Booking is already paid');
 
+    // Guard: Razorpay requires a minimum positive amount (in paise)
+    const amountPaise = Math.round((booking.fare.paidNow || 0) * 100);
+    if (amountPaise < 100) {
+      console.error(`createPaymentOrder: invalid paidNow amount (${booking.fare.paidNow}) for booking ${booking.bookingId}`);
+      return fail(res, 400, 'INVALID_AMOUNT', 'Payable amount is too low to initiate a payment');
+    }
+
     const rzp = getRazorpay();
     if (!rzp) return fail(res, 503, 'PAYMENT_NOT_CONFIGURED', 'Online payment is not available right now');
 
-    const order = await rzp.orders.create({
-      amount: booking.fare.paidNow * 100,
-      currency: 'INR',
-      receipt: booking.bookingId,
-      notes: { bookingId: booking.bookingId },
-    });
+    let order;
+    try {
+      order = await rzp.orders.create({
+        amount: amountPaise,
+        currency: 'INR',
+        receipt: booking.bookingId,
+        notes: { bookingId: booking.bookingId },
+      });
+    } catch (rzpErr) {
+      // Razorpay BAD_REQUEST_ERROR means our data is invalid (not a gateway outage)
+      const rzpCode = rzpErr?.error?.code || '';
+      const rzpDesc = rzpErr?.error?.description || rzpErr?.message || 'Unknown Razorpay error';
+      console.error(`createPaymentOrder: Razorpay error [${rzpCode}] ${rzpDesc}`);
+      if (rzpCode === 'BAD_REQUEST_ERROR') {
+        return fail(res, 400, 'PAYMENT_REQUEST_ERROR', rzpDesc);
+      }
+      return fail(res, 502, 'PAYMENT_GATEWAY_ERROR', 'Could not start payment. Please try again.');
+    }
+
     booking.payment.orderId = order.id;
     booking.payment.status = 'pending';
     await booking.save();
 
     res.json({ orderId: order.id, amount: order.amount, currency: order.currency, keyId: process.env.RAZORPAY_KEY_ID });
   } catch (err) {
-    console.error('createPaymentOrder:', err.error || err);
-    fail(res, 502, 'PAYMENT_GATEWAY_ERROR', 'Could not start payment');
+    console.error('createPaymentOrder:', err);
+    fail(res, 500, 'SERVER_ERROR', 'Could not start payment');
   }
 };
 
