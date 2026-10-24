@@ -76,6 +76,8 @@ const userSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+userSchema.index({ createdAt: -1 });
+
 // Hash password before save
 userSchema.pre('save', async function () {
   if (!this.isModified('password') || !this.password) return;

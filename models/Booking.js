@@ -73,5 +73,10 @@ const bookingSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-const Booking = mongoose.model('Booking', bookingSchema);
+// Dashboard lists/finance filter by status and sort newest first.
+bookingSchema.index({ status: 1, createdAt: -1 });
+bookingSchema.index({ user: 1, createdAt: -1 });
+bookingSchema.index({ partner: 1, createdAt: -1 });
+
+const Booking =mongoose.model('Booking', bookingSchema);
 export default Booking;

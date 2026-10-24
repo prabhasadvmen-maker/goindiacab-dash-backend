@@ -226,6 +226,9 @@ const partnerSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+partnerSchema.index({ createdAt: -1 });
+partnerSchema.index({ applicationStatus: 1, createdAt: -1 });
+
 // Hash password before save if modified
 partnerSchema.pre('save', async function () {
   if (!this.isModified('password') || !this.password) return;

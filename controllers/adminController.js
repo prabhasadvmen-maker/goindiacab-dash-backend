@@ -171,10 +171,14 @@ export const getSuperAdminStats = async (req, res) => {
       Partner.countDocuments(),
       Admin.countDocuments(),
       Booking.countDocuments(),
-      Booking.find({ status: 'COMPLETED' }).select('fare.estimated')
+      // Sum in the database instead of loading every completed booking into memory.
+      Booking.aggregate([
+        { $match: { status: 'COMPLETED' } },
+        { $group: { _id: null, total: { $sum: '$fare.estimated' } } },
+      ])
     ]);
 
-    const totalRevenue = completedBookings.reduce((sum, b) => sum + (b.fare?.estimated || 0), 0);
+    const totalRevenue = completedBookings[0]?.total || 0;
 
     res.status(200).json({
       success: true,

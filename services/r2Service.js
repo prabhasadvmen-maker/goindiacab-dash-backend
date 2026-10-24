@@ -1,6 +1,7 @@
 import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import crypto from 'crypto';
+import { createTtlCache } from './ttlCache.js';
 
 // Initialize the S3 client for Cloudflare R2
 const getS3Client = () => {
@@ -86,17 +87,23 @@ export const uploadBase64ToR2 = async (base64String, folderPrefix) => {
  * @param {string} storedUrl - e.g. https://pub-xxx.r2.dev/vehicle-type_123.png
  * @param {number} expiresIn - seconds (R2 max is 7 days)
  */
+// Presigned URLs live for days but are reused for a day: a URL that is stable across requests lets the
+// browser cache the image (a fresh signature on every request defeats caching and re-downloads each time).
+const presignCache = createTtlCache({ ttlMs: 24 * 60 * 60 * 1000, maxEntries: 1000 });
+
 export const getPresignedUrl = async (storedUrl, expiresIn = 6 * 24 * 60 * 60) => {
   if (!s3Client || !storedUrl) return storedUrl;
   const publicUrl = process.env.R2_PUBLIC_URL || 'https://pub-advmenngo.r2.dev';
   if (!storedUrl.startsWith(`${publicUrl}/`)) return storedUrl;
 
-  try {
-    const key = decodeURIComponent(storedUrl.slice(publicUrl.length + 1).split('?')[0]);
-    const command = new GetObjectCommand({ Bucket: process.env.R2_BUCKET || 'advmenngo', Key: key });
-    return await getSignedUrl(s3Client, command, { expiresIn });
-  } catch (error) {
-    console.error('Error presigning R2 URL:', error);
-    return storedUrl;
-  }
+  return presignCache.wrap(storedUrl, async () => {
+    try {
+      const key = decodeURIComponent(storedUrl.slice(publicUrl.length + 1).split('?')[0]);
+      const command = new GetObjectCommand({ Bucket: process.env.R2_BUCKET || 'advmenngo', Key: key });
+      return await getSignedUrl(s3Client, command, { expiresIn });
+    } catch (error) {
+      console.error('Error presigning R2 URL:', error);
+      return storedUrl;
+    }
+  });
 };

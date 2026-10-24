@@ -70,4 +70,9 @@ const webBookingSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// Admin booking list / payment history: filter by status, newest first.
+webBookingSchema.index({ createdAt: -1 });
+webBookingSchema.index({ status: 1, createdAt: -1 });
+webBookingSchema.index({ 'payment.status': 1, 'payment.paidAt': -1 });
+
 export default mongoose.model('WebBooking', webBookingSchema);

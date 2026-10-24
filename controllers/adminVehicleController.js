@@ -27,18 +27,22 @@ export const getVehicles = async (req, res) => {
 
     const total = await Partner.countDocuments(filter);
     
-    // We only project the fields we need for the vehicle management table to save bandwidth
+    // The table only needs the front photo. Documents and the other photos can be multi-MB base64 strings,
+    // so they stay out of the list (the details page loads them via GET /vehicles/:id).
+    const pageNo = Math.max(1, Number(page) || 1);
+    const pageSize = Math.min(50, Math.max(1, Number(limit) || 10));
     const partners = await Partner.find(filter)
-      .select('name phone email vehicleNumber vehicleDetails vehicleDocuments vehiclePhotos isVehicleEligible applicationStatus isActive createdAt')
+      .select('name phone email vehicleNumber vehicleDetails vehiclePhotos.front isVehicleEligible applicationStatus isActive createdAt')
       .sort({ createdAt: -1 })
-      .skip((Number(page) - 1) * Number(limit))
-      .limit(Number(limit));
+      .skip((pageNo - 1) * pageSize)
+      .limit(pageSize)
+      .lean();
 
     return res.status(200).json({
       success: true,
       total,
-      page: Number(page),
-      pages: Math.ceil(total / Number(limit)),
+      page: pageNo,
+      pages: Math.ceil(total / pageSize),
       data: partners
     });
   } catch (error) {

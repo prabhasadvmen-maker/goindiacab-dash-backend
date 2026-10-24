@@ -11,12 +11,18 @@ import { sendBookingConfirmation } from '../services/webNotifyService.js';
 import { applyCoupon, listPublicCoupons, normalizeCode } from '../services/webCouponService.js';
 import WebCoupon from '../models/WebCoupon.js';
 import { getPresignedUrl } from '../services/r2Service.js';
+import { createTtlCache } from '../services/ttlCache.js';
 
 const escapeRegex = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const fail = (res, status, error, message) => res.status(status).json({ success: false, error, message });
 
+// Short-lived caches for public reads that rarely change (admin edits show up within a minute).
+const publicReadCache = createTtlCache({ ttlMs: 60 * 1000, maxEntries: 20 });
+// Place suggestions per typed query: Google Places is the slowest call on the site and is hit on every keystroke.
+const suggestCache = createTtlCache({ ttlMs: 10 * 60 * 1000, maxEntries: 1500 });
+
 const getPartPercent = async () => {
-  const s = await Setting.findOne();
+  const s = await Setting.findOne().lean();
   return s?.webPartPaymentPercent || 25;
 };
 
@@ -71,10 +77,12 @@ export const suggestDestinations = async (req, res) => {
     const q = String(req.query.q || '').trim();
     if (q.length < 2) return res.json({ suggestions: [] });
 
-    const places = await getAutoCompleteSuggestions(q, { cities: false });
-    const suggestions = places.map((p) => {
-      const state = p.secondaryText.replace(/,?\s*India$/i, '').trim();
-      return { label: state ? `${p.mainText}, ${state}` : p.mainText, value: p.mainText };
+    const suggestions = await suggestCache.wrap(`to:${q.toLowerCase()}`, async () => {
+      const places = await getAutoCompleteSuggestions(q, { cities: false });
+      return places.map((p) => {
+        const state = p.secondaryText.replace(/,?\s*India$/i, '').trim();
+        return { label: state ? `${p.mainText}, ${state}` : p.mainText, value: p.mainText };
+      });
     });
     res.json({ suggestions: suggestions.slice(0, 8) });
   } catch (err) {
@@ -89,28 +97,31 @@ export const suggestLocations = async (req, res) => {
     const q = String(req.query.q || '').trim();
     if (q.length < 2) return res.json({ suggestions: [] });
 
-    const rx = new RegExp('^' + escapeRegex(q), 'i');
-    const cities = await WebCity.find({ isActive: true, name: rx })
-      .sort({ isPopular: -1, name: 1 })
-      .limit(8)
-      .lean();
-    const suggestions = cities.map((c) => ({ label: c.state ? `${c.name}, ${c.state}` : c.name, value: c.name }));
+    const suggestions = await suggestCache.wrap(`from:${q.toLowerCase()}`, async () => {
+      const rx = new RegExp('^' + escapeRegex(q), 'i');
+      const cities = await WebCity.find({ isActive: true, name: rx })
+        .sort({ isPopular: -1, name: 1 })
+        .limit(8)
+        .lean();
+      const list = cities.map((c) => ({ label: c.state ? `${c.name}, ${c.state}` : c.name, value: c.name }));
 
-    // Not enough admin cities for this query: fill the rest from Google so any Indian city works.
-    if (suggestions.length < 5) {
-      try {
-        const seen = new Set(suggestions.map((s) => s.value.toLowerCase()));
-        const places = await getAutoCompleteSuggestions(q, { cities: true });
-        for (const p of places) {
-          if (seen.has(p.mainText.toLowerCase())) continue;
-          seen.add(p.mainText.toLowerCase());
-          const state = p.secondaryText.replace(/,?\s*India$/i, '').trim();
-          suggestions.push({ label: state ? `${p.mainText}, ${state}` : p.mainText, value: p.mainText });
+      // Not enough admin cities for this query: fill the rest from Google so any Indian city works.
+      if (list.length < 5) {
+        try {
+          const seen = new Set(list.map((s) => s.value.toLowerCase()));
+          const places = await getAutoCompleteSuggestions(q, { cities: true });
+          for (const p of places) {
+            if (seen.has(p.mainText.toLowerCase())) continue;
+            seen.add(p.mainText.toLowerCase());
+            const state = p.secondaryText.replace(/,?\s*India$/i, '').trim();
+            list.push({ label: state ? `${p.mainText}, ${state}` : p.mainText, value: p.mainText });
+          }
+        } catch (err) {
+          console.error('suggestLocations google fallback:', err.message);
         }
-      } catch (err) {
-        console.error('suggestLocations google fallback:', err.message);
       }
-    }
+      return list;
+    });
 
     res.json({ suggestions: suggestions.slice(0, 8) });
   } catch (err) {
@@ -146,23 +157,25 @@ export const getDistance = async (req, res) => {
 // GET /api/web-config - everything the search UI needs that used to be hard-coded in the frontend
 export const getWebConfig = async (req, res) => {
   try {
-    const [cities, rules, setting] = await Promise.all([
-      WebCity.find({ isActive: true, isPopular: true }).sort({ name: 1 }).limit(24).lean(),
-      WebFareRule.find({ isActive: true }).lean(),
-      Setting.findOne(),
-    ]);
+    res.json(await publicReadCache.wrap('web-config', async () => {
+      const [cities, rules, setting] = await Promise.all([
+        WebCity.find({ isActive: true, isPopular: true }).sort({ name: 1 }).limit(24).lean(),
+        WebFareRule.find({ isActive: true }).lean(),
+        Setting.findOne().lean(),
+      ]);
 
-    const pkgs = new Map();
-    rules.forEach((r) => r.packages.forEach((p) => { if (!pkgs.has(p.label)) pkgs.set(p.label, { label: p.label, hours: p.hours, km: p.km }); }));
+      const pkgs = new Map();
+      rules.forEach((r) => r.packages.forEach((p) => { if (!pkgs.has(p.label)) pkgs.set(p.label, { label: p.label, hours: p.hours, km: p.km }); }));
 
-    res.json({
-      popularCities: cities.map((c) => ({ name: c.name, state: c.state || '' })),
-      localPackages: [...pkgs.values()].sort((a, b) => a.hours - b.hours || a.km - b.km),
-      maxSeats: rules.reduce((m, r) => Math.max(m, r.seats || 0), 0),
-      freeCancelMinutes: setting?.webFreeCancelMinutes ?? 60,
-      policies: (setting?.webPolicies || []).map((p) => ({ kind: p.kind, title: p.title, text: p.text })),
-      partPaymentPercent: setting?.webPartPaymentPercent ?? 25,
-    });
+      return {
+        popularCities: cities.map((c) => ({ name: c.name, state: c.state || '' })),
+        localPackages: [...pkgs.values()].sort((a, b) => a.hours - b.hours || a.km - b.km),
+        maxSeats: rules.reduce((m, r) => Math.max(m, r.seats || 0), 0),
+        freeCancelMinutes: setting?.webFreeCancelMinutes ?? 60,
+        policies: (setting?.webPolicies || []).map((p) => ({ kind: p.kind, title: p.title, text: p.text })),
+        partPaymentPercent: setting?.webPartPaymentPercent ?? 25,
+      };
+    }));
   } catch (err) {
     console.error('getWebConfig:', err);
     fail(res, 500, 'SERVER_ERROR', 'Could not load configuration');
@@ -172,12 +185,14 @@ export const getWebConfig = async (req, res) => {
 // GET /api/fare/vehicles - vehicle list for the cab cards
 export const listVehicleTypes = async (req, res) => {
   try {
-    const rules = await WebFareRule.find({ isActive: true }).sort({ sortOrder: 1, perKmOneway: 1 }).lean();
-    const vehicles = await Promise.all(rules.map(async (r) => ({
-      id: r.vehicleType, name: r.name, model: r.model, seats: r.seats, bags: r.bags || 0, rating: r.rating || 0, fuelType: r.fuelType || '', gstPercent: r.gstPercent, imageUrl: await getPresignedUrl(r.imageUrl),
-      packages: r.packages.map((p) => ({ label: p.label, hours: p.hours, km: p.km, price: p.price })),
-    })));
-    res.json({ vehicles });
+    res.json(await publicReadCache.wrap('fare-vehicles', async () => {
+      const rules = await WebFareRule.find({ isActive: true }).sort({ sortOrder: 1, perKmOneway: 1 }).lean();
+      const vehicles = await Promise.all(rules.map(async (r) => ({
+        id: r.vehicleType, name: r.name, model: r.model, seats: r.seats, bags: r.bags || 0, rating: r.rating || 0, fuelType: r.fuelType || '', gstPercent: r.gstPercent, imageUrl: await getPresignedUrl(r.imageUrl),
+        packages: r.packages.map((p) => ({ label: p.label, hours: p.hours, km: p.km, price: p.price })),
+      })));
+      return { vehicles };
+    }));
   } catch (err) {
     fail(res, 500, 'SERVER_ERROR', 'Could not fetch vehicles');
   }

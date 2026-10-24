@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import compression from 'compression';
 import dotenv from 'dotenv';
 import rateLimit from 'express-rate-limit';
 import connectDB from './config/db.js';
@@ -41,6 +42,9 @@ const corsOptions = {
   credentials: true,
 };
 app.use(cors(corsOptions));
+
+// gzip JSON / text responses: a few KB instead of hundreds, which matters most on a small instance's uplink.
+app.use(compression());
 
 // JSON Body Parser with increased limit for Base64 images
 app.use(express.json({ limit: '50mb' }));
