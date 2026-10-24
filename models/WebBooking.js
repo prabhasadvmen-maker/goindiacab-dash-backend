@@ -20,6 +20,7 @@ const webBookingSchema = new mongoose.Schema(
     trip: {
       from: { type: String, required: true },
       to: { type: String, default: '' },
+      stop: { type: String, default: '' }, // optional intermediate stop
       date: { type: String, required: true }, // YYYY-MM-DD
       time: { type: String, required: true }, // HH:mm
       tripType: { type: String, enum: ['oneway', 'roundtrip', 'local'], default: 'oneway' },
@@ -40,6 +41,7 @@ const webBookingSchema = new mongoose.Schema(
       gst: { type: Number, default: 0 },
       addons: { type: [mongoose.Schema.Types.Mixed], default: [] },
       discount: { type: Number, default: 0 },
+      couponCode: { type: String, default: '', index: true },
       total: { type: Number, required: true },
       paymentOption: { type: String, enum: ['full', 'part'], default: 'part' },
       paidNow: { type: Number, default: 0 }, // amount payable now

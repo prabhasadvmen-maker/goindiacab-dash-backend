@@ -13,7 +13,7 @@ APIs used by the public booking website (Next.js) and managed from the **Super A
 |---|---|
 | `MONGODB_URI`, `JWT_SECRET` | already present |
 | `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` | payments (secret never leaves the backend) |
-| `GEOAPIFY_API_KEY` | city suggestions top-up + automatic distance |
+| `GOOGLE_MAP_SERVER_API` | Google Places (New) city suggestions + Routes distance. Server key: no referrer restriction, API restriction = Places API (New) + Routes API |
 | `WEBSITE_URL` | **new** — allowed CORS origin(s) of the website, comma-separated (default `http://localhost:3000`). Dashboard origin stays in `FRONTEND_URL` |
 | `EMAIL_ENABLED=true`, `BREVO_API_KEY`, `BREVO_FROM_EMAIL`, `BREVO_FROM_NAME`, `APP_NAME` | booking confirmation email |
 
@@ -48,7 +48,7 @@ Rate limits (per IP per minute): suggest 120, distance 60, fare vehicles 60, far
 
 ### 1. Location autocomplete — `GET /api/locations/suggest?q={query}`
 
-Admin-managed cities (popular first, prefix match), topped up from Geoapify if fewer than 6. Returns `[]` for `q` shorter than 2 characters.
+Admin-managed cities (popular first, prefix match), topped up from Google Places if fewer than 6. Returns `[]` for `q` shorter than 2 characters.
 
 ```json
 { "suggestions": [ { "label": "Delhi, Delhi", "value": "Delhi" }, { "label": "New Delhi, Delhi", "value": "New Delhi" } ] }
@@ -57,7 +57,7 @@ Use `value` as the city name in every other API; `label` is for display.
 
 ### 2. Distance — `GET /api/distance?from=Delhi&to=Agra`
 
-Lookup order: Super Admin route (either direction) → Geoapify routing (result is cached as an `auto` route).
+Lookup order: Super Admin route (either direction) → Google Routes (result is cached as an `auto` route).
 
 ```json
 { "distanceKm": 212, "durationMins": 140, "routeLabel": "Delhi → Agra", "source": "api" }

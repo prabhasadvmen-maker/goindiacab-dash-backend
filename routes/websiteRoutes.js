@@ -1,7 +1,7 @@
 import express from 'express';
 import rateLimit from 'express-rate-limit';
 import {
-  suggestLocations, getDistance, listVehicleTypes, calculateFareApi,
+  suggestLocations, suggestDestinations, getDistance, listVehicleTypes, getWebConfig, validateCouponApi, listCouponsApi, calculateFareApi,
   createBooking, getBooking, createPaymentOrder, verifyPayment, notifyBookingConfirmed,
 } from '../controllers/websiteController.js';
 
@@ -15,8 +15,12 @@ const limiter = (max) =>
 
 // Public website APIs (no login). Mounted at /api
 router.get('/locations/suggest', limiter(120), suggestLocations);
+router.get('/locations/suggest-destination', limiter(120), suggestDestinations);
 router.get('/distance', limiter(60), getDistance);
 router.get('/fare/vehicles', limiter(60), listVehicleTypes);
+router.get('/web-config', limiter(60), getWebConfig);
+router.get('/coupons/available', limiter(60), listCouponsApi);
+router.post('/coupons/validate', limiter(30), validateCouponApi);
 router.post('/fare/calculate', limiter(120), calculateFareApi);
 router.post('/booking/create', limiter(10), createBooking);
 router.get('/booking/:bookingId', limiter(60), getBooking);

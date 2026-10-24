@@ -2,6 +2,7 @@ import WebCity from '../models/WebCity.js';
 import WebRoute from '../models/WebRoute.js';
 import WebFareRule from '../models/WebFareRule.js';
 import WebBooking from '../models/WebBooking.js';
+import { uploadBase64ToR2, getPresignedUrl } from '../services/r2Service.js';
 
 const escapeRegex = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const key = (s) => String(s || '').trim().toLowerCase();
@@ -100,24 +101,40 @@ export const deleteRoute = handle(async (req, res) => {
 
 // ───────── Fare rules ─────────
 const FARE_FIELDS = [
-  'vehicleType', 'name', 'model', 'seats', 'imageUrl', 'perKmOneway', 'perKmRound', 'minKmOneway',
+  'vehicleType', 'name', 'model', 'seats', 'fuelType', 'bags', 'rating', 'imageUrl', 'perKmOneway', 'perKmRound', 'minKmOneway',
   'minKmPerDay', 'driverAllowance', 'driverAllowancePerDay', 'gstPercent', 'packages', 'sortOrder', 'isActive',
 ];
 
 export const listFareRules = handle(async (req, res) => {
-  const data = await WebFareRule.find().sort({ sortOrder: 1, perKmOneway: 1 });
+  const rules = await WebFareRule.find().sort({ sortOrder: 1, perKmOneway: 1 }).lean();
+  const data = await Promise.all(rules.map(async (r) => ({ ...r, imageUrl: await getPresignedUrl(r.imageUrl) })));
   res.json({ success: true, data });
 });
 
+// Uploaded vehicle images arrive as base64 data URLs; store them on R2 and keep only the URL.
+const withUploadedImage = async (body) => {
+  const fields = pick(body, FARE_FIELDS);
+  if (fields.imageUrl && fields.imageUrl.startsWith('data:image')) {
+    fields.imageUrl = await uploadBase64ToR2(fields.imageUrl, 'vehicle-type');
+  } else if (fields.imageUrl && fields.imageUrl.includes('X-Amz-Signature')) {
+    // The dashboard sends back the presigned URL it was given; store the permanent object URL instead.
+    const bucket = process.env.R2_BUCKET || 'advmenngo';
+    const publicUrl = process.env.R2_PUBLIC_URL || 'https://pub-advmenngo.r2.dev';
+    const path = decodeURIComponent(new URL(fields.imageUrl).pathname.slice(1));
+    fields.imageUrl = `${publicUrl}/${path.startsWith(`${bucket}/`) ? path.slice(bucket.length + 1) : path}`;
+  }
+  return fields;
+};
+
 export const createFareRule = handle(async (req, res) => {
   if (!isSuper(req)) return forbid(res);
-  const data = await WebFareRule.create(pick(req.body, FARE_FIELDS));
+  const data = await WebFareRule.create(await withUploadedImage(req.body));
   res.status(201).json({ success: true, data });
 });
 
 export const updateFareRule = handle(async (req, res) => {
   if (!isSuper(req)) return forbid(res);
-  const data = await WebFareRule.findByIdAndUpdate(req.params.id, pick(req.body, FARE_FIELDS), { new: true, runValidators: true });
+  const data = await WebFareRule.findByIdAndUpdate(req.params.id, await withUploadedImage(req.body), { new: true, runValidators: true });
   if (!data) return res.status(404).json({ success: false, message: 'Fare rule not found' });
   res.json({ success: true, data });
 });

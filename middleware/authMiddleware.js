@@ -31,7 +31,9 @@ export const protect = async (req, res, next) => {
       
       next();
     } catch (error) {
-      console.error('JWT verification error:', error);
+      if (error.name !== 'JsonWebTokenError') {
+        console.error('JWT verification error:', error);
+      }
       return res.status(401).json({ message: 'Not authorized, token failed' });
     }
   }

@@ -1,85 +1,115 @@
 import axios from 'axios';
 
-const getGeoapifyKey = () => process.env.GEOAPIFY_API_KEY;
+// Server-side key (no referrer restriction). Falls back to the browser key only for local testing.
+const getGoogleKey = () => process.env.GOOGLE_MAP_SERVER_API || process.env.GOOGLE_MAP_API;
 
-export const getAutoCompleteSuggestions = async (input) => {
+const requireKey = () => {
+  const key = getGoogleKey();
+  if (!key) throw new Error('GOOGLE_MAP_SERVER_API is not configured');
+  return key;
+};
+
+const googleError = (err) =>
+  err.response?.data?.error?.message || err.message;
+
+// Server-side calls need a Referer header when the key has HTTP referrer restrictions.
+const serverHeaders = (key) => ({
+  'X-Goog-Api-Key': key,
+  'Referer': process.env.FRONTEND_URL || 'http://localhost:3000',
+  'Origin': process.env.FRONTEND_URL || 'http://localhost:3000',
+});
+
+// Places API (New) - autocomplete, restricted to India.
+// opts.cities = true limits results to cities/localities (used by the website From/To boxes).
+export const getAutoCompleteSuggestions = async (input, opts = {}) => {
   if (!input) return [];
-  
+
   try {
-    const response = await axios.get(`https://api.geoapify.com/v1/geocode/autocomplete`, {
-      params: {
-        text: input,
-        apiKey: getGeoapifyKey(),
-        filter: 'countrycode:in' // Restrict to India
-      }
+    const body = { input, includedRegionCodes: ['in'], languageCode: 'en' };
+    if (opts.cities) body.includedPrimaryTypes = ['(cities)'];
+
+    const { data } = await axios.post('https://places.googleapis.com/v1/places:autocomplete', body, {
+      headers: serverHeaders(requireKey()),
+      timeout: 5000,
     });
 
-    if (response.data && response.data.features) {
-      return response.data.features.map(f => ({
-        placeId: f.properties.place_id,
-        description: f.properties.formatted,
-        mainText: f.properties.address_line1 || f.properties.name,
-        secondaryText: f.properties.address_line2,
-        lat: f.properties.lat, // Geoapify provides lat/lon immediately
-        lng: f.properties.lon
+    return (data.suggestions || [])
+      .filter((s) => s.placePrediction)
+      .map(({ placePrediction: p }) => ({
+        placeId: p.placeId,
+        description: p.text?.text || '',
+        mainText: p.structuredFormat?.mainText?.text || p.text?.text || '',
+        secondaryText: p.structuredFormat?.secondaryText?.text || '',
       }));
-    }
-    return [];
   } catch (error) {
-    console.error('Geoapify Autocomplete error:', error.message);
+    console.error('Google Autocomplete error:', googleError(error));
     throw new Error('Failed to fetch location suggestions');
   }
 };
 
+// Places API (New) - exact lat/lng + formatted address for a place id.
 export const getPlaceDetails = async (placeId) => {
   if (!placeId) throw new Error('Place ID is required');
 
   try {
-    const response = await axios.get(`https://api.geoapify.com/v2/place-details`, {
-      params: {
-        id: placeId,
-        apiKey: getGeoapifyKey()
-      }
+    const { data } = await axios.get(`https://places.googleapis.com/v1/places/${encodeURIComponent(placeId)}`, {
+      headers: {
+        ...serverHeaders(requireKey()),
+        'X-Goog-FieldMask': 'location,formattedAddress',
+      },
+      timeout: 5000,
     });
 
-    if (response.data && response.data.features && response.data.features.length > 0) {
-      const location = response.data.features[0].properties;
-      return {
-        lat: location.lat,
-        lng: location.lon,
-        address: location.formatted
-      };
-    }
-    throw new Error('Place details not found');
+    if (!data.location) throw new Error('Place details not found');
+    return {
+      lat: data.location.latitude,
+      lng: data.location.longitude,
+      address: data.formattedAddress,
+    };
   } catch (error) {
-    console.error('Geoapify Place Details error:', error.message);
+    console.error('Google Place Details error:', googleError(error));
     throw new Error('Failed to fetch location details');
   }
 };
 
+// Routes API - driving distance/time. Each end is { lat, lng } or { address }.
+const toWaypoint = (p) =>
+  p.address
+    ? { address: p.address }
+    : { location: { latLng: { latitude: Number(p.lat), longitude: Number(p.lng) } } };
+
 export const getDistanceMatrix = async (origin, destination) => {
   try {
-    const response = await axios.get(`https://api.geoapify.com/v1/routing`, {
-      params: {
-        waypoints: `${origin.lat},${origin.lng}|${destination.lat},${destination.lng}`,
-        mode: 'drive',
-        apiKey: getGeoapifyKey()
+    const { data } = await axios.post(
+      'https://routes.googleapis.com/directions/v2:computeRoutes',
+      {
+        origin: toWaypoint(origin),
+        destination: toWaypoint(destination),
+        travelMode: 'DRIVE',
+        regionCode: 'IN',
+        units: 'METRIC',
+      },
+      {
+        headers: {
+          ...serverHeaders(requireKey()),
+          'X-Goog-FieldMask': 'routes.distanceMeters,routes.duration',
+        },
+        timeout: 8000,
       }
-    });
+    );
 
-    if (response.data && response.data.features && response.data.features.length > 0) {
-      const properties = response.data.features[0].properties;
-      const distanceMeters = properties.distance;
-      const durationSeconds = properties.time;
+    const route = data.routes?.[0];
+    if (!route || route.distanceMeters == null) throw new Error('Unable to calculate distance');
 
-      return {
-        distance: { text: `${(distanceMeters / 1000).toFixed(1)} km`, value: distanceMeters },
-        duration: { text: `${Math.round(durationSeconds / 60)} mins`, value: durationSeconds }
-      };
-    }
-    throw new Error('Unable to calculate distance');
+    const distanceMeters = route.distanceMeters;
+    const durationSeconds = parseInt(String(route.duration || '0').replace('s', ''), 10) || 0;
+
+    return {
+      distance: { text: `${(distanceMeters / 1000).toFixed(1)} km`, value: distanceMeters },
+      duration: { text: `${Math.round(durationSeconds / 60)} mins`, value: durationSeconds },
+    };
   } catch (error) {
-    console.error('Geoapify Distance Routing error:', error.message);
+    console.error('Google Routes error:', googleError(error));
     throw new Error('Failed to calculate exact distance');
   }
 };

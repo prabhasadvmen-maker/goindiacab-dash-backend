@@ -1,4 +1,5 @@
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import crypto from 'crypto';
 
 // Initialize the S3 client for Cloudflare R2
@@ -76,5 +77,26 @@ export const uploadBase64ToR2 = async (base64String, folderPrefix) => {
     console.error('Error uploading to R2:', error);
     // On failure, fallback to saving the base64 string directly so onboarding doesn't break
     return base64String; 
+  }
+};
+
+/**
+ * Turns a stored R2 object URL into a time-limited presigned GET URL.
+ * Non-R2 values (data URLs, external URLs, empty) are returned unchanged.
+ * @param {string} storedUrl - e.g. https://pub-xxx.r2.dev/vehicle-type_123.png
+ * @param {number} expiresIn - seconds (R2 max is 7 days)
+ */
+export const getPresignedUrl = async (storedUrl, expiresIn = 6 * 24 * 60 * 60) => {
+  if (!s3Client || !storedUrl) return storedUrl;
+  const publicUrl = process.env.R2_PUBLIC_URL || 'https://pub-advmenngo.r2.dev';
+  if (!storedUrl.startsWith(`${publicUrl}/`)) return storedUrl;
+
+  try {
+    const key = decodeURIComponent(storedUrl.slice(publicUrl.length + 1).split('?')[0]);
+    const command = new GetObjectCommand({ Bucket: process.env.R2_BUCKET || 'advmenngo', Key: key });
+    return await getSignedUrl(s3Client, command, { expiresIn });
+  } catch (error) {
+    console.error('Error presigning R2 URL:', error);
+    return storedUrl;
   }
 };

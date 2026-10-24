@@ -33,6 +33,20 @@ const settingSchema = new mongoose.Schema({
     type: Boolean,
     default: true,
   },
+  webPolicies: {
+    type: [{ title: String, text: String, kind: { type: String, enum: ['included', 'excluded'], default: 'included' }, _id: false }],
+    default: () => [
+      { kind: 'included', title: 'Toll, tax and other charges', text: 'Toll, State Tax and Parking charges are included' },
+      { kind: 'included', title: 'Driver allowance', text: 'Driver food and accommodation (stay) charges are included' },
+      { kind: 'included', title: 'Fuel charges included', text: 'Fuel cost for your trip is included in the fare' },
+      { kind: 'excluded', title: 'Multiple pickups/drops', text: 'Extra pickups or drops other than the booked stop are not included' },
+    ],
+  },
+  webFreeCancelMinutes: {
+    type: Number,
+    default: 60, // free cancellation window before pickup, shown on the public website
+    min: 0,
+  },
   webPartPaymentPercent: {
     type: Number,
     default: 25, // % payable online at booking time on the public website

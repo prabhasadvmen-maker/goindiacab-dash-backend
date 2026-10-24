@@ -1,5 +1,6 @@
 import express from 'express';
 import { protect } from '../middleware/authMiddleware.js';
+import { listCoupons, createCoupon, updateCoupon, deleteCoupon } from '../controllers/adminCouponController.js';
 import {
   listCities, createCity, updateCity, deleteCity,
   listRoutes, createRoute, updateRoute, deleteRoute,
@@ -23,6 +24,9 @@ router.route('/routes/:id').put(updateRoute).delete(deleteRoute);
 
 router.route('/fare-rules').get(listFareRules).post(createFareRule);
 router.route('/fare-rules/:id').put(updateFareRule).delete(deleteFareRule);
+
+router.route('/coupons').get(listCoupons).post(createCoupon);
+router.route('/coupons/:id').put(updateCoupon).delete(deleteCoupon);
 
 router.get('/bookings', listWebBookings);
 router.get('/bookings/:bookingId', getWebBooking);

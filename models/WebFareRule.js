@@ -19,6 +19,9 @@ const webFareRuleSchema = new mongoose.Schema(
     name: { type: String, required: true },
     model: { type: String, default: '' }, // "Dzire, Etios or similar"
     seats: { type: Number, default: 4 },
+    fuelType: { type: String, default: '', trim: true }, // Petrol / Diesel / CNG / Electric
+    bags: { type: Number, default: 0, min: 0 }, // luggage capacity shown on the cab card
+    rating: { type: Number, default: 0, min: 0, max: 5 }, // 0 = not rated, hidden on the website
     imageUrl: { type: String, default: '' },
     perKmOneway: { type: Number, required: true },
     perKmRound: { type: Number, required: true },

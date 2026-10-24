@@ -1,16 +1,12 @@
 import WebRoute from '../models/WebRoute.js';
-import { getAutoCompleteSuggestions, getDistanceMatrix } from './mapsService.js';
+import { getDistanceMatrix } from './mapsService.js';
 
 const key = (s) => String(s || '').trim().toLowerCase();
 
-const geocodeCity = async (name) => {
-  const results = await getAutoCompleteSuggestions(name);
-  const hit = results.find((r) => r.lat != null && r.lng != null);
-  if (!hit) throw new Error(`Could not locate "${name}"`);
-  return { lat: hit.lat, lng: hit.lng };
-};
+// The Routes API resolves city names itself, no separate geocoding step needed.
+const cityAddress = (name) => ({ address: `${String(name).trim()}, India` });
 
-// Order: admin/cached route (either direction) -> Geoapify routing (cached for next time).
+// Order: admin/cached route (either direction) -> Google Routes (cached for next time).
 export const resolveDistance = async (from, to) => {
   const fromKey = key(from);
   const toKey = key(to);
@@ -30,8 +26,7 @@ export const resolveDistance = async (from, to) => {
     };
   }
 
-  const [a, b] = await Promise.all([geocodeCity(from), geocodeCity(to)]);
-  const matrix = await getDistanceMatrix(a, b);
+  const matrix = await getDistanceMatrix(cityAddress(from), cityAddress(to));
   const distanceKm = Math.round(matrix.distance.value / 1000);
   const durationMins = Math.round(matrix.duration.value / 60);
 
