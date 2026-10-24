@@ -1,4 +1,5 @@
 import Booking from '../models/Booking.js';
+import WebBooking from '../models/WebBooking.js';
 import Razorpay from 'razorpay';
 import dotenv from 'dotenv';
 
@@ -109,6 +110,65 @@ export const getRecentTransactions = async (req, res) => {
   } catch (error) {
     console.error('Error fetching transactions:', error);
     res.status(500).json({ success: false, message: 'Failed to fetch transactions' });
+  }
+};
+
+// @desc    Website (Razorpay) payment history + totals
+// @route   GET /api/admins/finance/web-payments?payment=paid|pending|failed|all&search=&page=&limit=
+// @access  Private (SuperAdmin/Admin)
+export const getWebPayments = async (req, res) => {
+  try {
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit, 10) || 10));
+    const payment = ['paid', 'pending', 'failed'].includes(req.query.payment) ? req.query.payment : 'all';
+
+    const filter = {};
+    if (payment !== 'all') filter['payment.status'] = payment;
+    if (payment === 'all' || payment === 'pending') filter['payment.orderId'] = { $ne: '' }; // skip bookings that never reached checkout
+    const search = String(req.query.search || '').trim();
+    if (search) {
+      const rx = new RegExp(search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+      filter.$or = [
+        { bookingId: rx }, { 'passenger.name': rx }, { 'passenger.mobile': rx },
+        { 'payment.paymentId': rx }, { 'payment.orderId': rx },
+      ];
+    }
+
+    const [total, data, summary] = await Promise.all([
+      WebBooking.countDocuments(filter),
+      WebBooking.find(filter)
+        .select('bookingId status passenger.name passenger.mobile trip.from trip.to trip.date fare payment createdAt')
+        .sort({ 'payment.paidAt': -1, createdAt: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit),
+      // Totals are over all paid bookings, independent of the table filter.
+      WebBooking.aggregate([
+        { $match: { 'payment.status': 'paid' } },
+        {
+          $group: {
+            _id: null,
+            paidCount: { $sum: 1 },
+            collected: { $sum: '$payment.paidAmount' },
+            discountGiven: { $sum: '$fare.discount' },
+            balanceWithDrivers: {
+              $sum: { $cond: [{ $ne: ['$status', 'cancelled'] }, '$fare.payLater', 0] },
+            },
+          },
+        },
+      ]),
+    ]);
+
+    const s = summary[0] || { paidCount: 0, collected: 0, discountGiven: 0, balanceWithDrivers: 0 };
+    res.status(200).json({
+      success: true,
+      total,
+      pagination: { page, limit, totalPages: Math.ceil(total / limit) || 1 },
+      summary: { paidCount: s.paidCount, collected: s.collected, discountGiven: s.discountGiven, balanceWithDrivers: s.balanceWithDrivers },
+      data,
+    });
+  } catch (error) {
+    console.error('Error fetching website payments:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch website payments' });
   }
 };
 

@@ -24,6 +24,9 @@ dotenv.config();
 const app = express();
 const server = http.createServer(app);
 
+// Behind Nginx / a load balancer: use the real client IP (rate limits are per IP).
+app.set('trust proxy', 1);
+
 // Initialize Socket.io
 initSocket(server);
 
@@ -95,4 +98,5 @@ connectDB()
   })
   .catch((err) => {
     console.error(`Database connection error: ${err.message}`);
+    process.exit(1); // let pm2 / the OS restart us instead of idling without a server
   });

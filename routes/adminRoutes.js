@@ -25,6 +25,7 @@ import {
 import {
   getFinanceOverview,
   getRecentTransactions,
+  getWebPayments,
   processPayout
 } from '../controllers/adminFinanceController.js';
 import {
@@ -86,6 +87,7 @@ router.get('/operations/active-drivers', getActiveDrivers);
 // ==========================================
 router.get('/finance/overview', getFinanceOverview);
 router.get('/finance/transactions', getRecentTransactions);
+router.get('/finance/web-payments', getWebPayments);
 router.post('/finance/payouts/:id', processPayout);
 
 // ==========================================

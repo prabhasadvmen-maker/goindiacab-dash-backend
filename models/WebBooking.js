@@ -58,6 +58,11 @@ const webBookingSchema = new mongoose.Schema(
       emailSent: { type: Boolean, default: false },
       smsSent: { type: Boolean, default: false },
     },
+    // One entry per status change made by the admin, shown as the customer's tracking timeline.
+    statusHistory: {
+      type: [{ _id: false, status: { type: String }, at: { type: Date, default: Date.now } }],
+      default: [],
+    },
     assignedPartner: { type: mongoose.Schema.Types.ObjectId, ref: 'Partner', default: null },
     adminNote: { type: String, default: '' },
     cancelReason: { type: String, default: '' },

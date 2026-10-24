@@ -56,6 +56,13 @@ const publicBooking = (b) => ({
   },
   paymentStatus: b.payment.status,
   bookedAt: b.createdAt,
+  // Tracking: the booking ID is the customer's only credential, so only what they need is exposed.
+  confirmedAt: b.payment.paidAt || b.createdAt,
+  statusHistory: (b.statusHistory || []).map((h) => ({ status: h.status, at: h.at })),
+  cancelReason: b.status === 'cancelled' ? b.cancelReason : '',
+  driver: b.assignedPartner?.name
+    ? { name: b.assignedPartner.name, phone: b.assignedPartner.phone || '', vehicleNumber: b.assignedPartner.vehicleNumber || '' }
+    : null,
 });
 
 // GET /api/locations/suggest-destination?q=agra  — Google Places only (TO field, unlimited)
@@ -354,7 +361,8 @@ export const createBooking = async (req, res) => {
 // GET /api/booking/:bookingId
 export const getBooking = async (req, res) => {
   try {
-    const booking = await WebBooking.findOne({ bookingId: String(req.params.bookingId).toUpperCase() });
+    const booking = await WebBooking.findOne({ bookingId: String(req.params.bookingId).toUpperCase() })
+      .populate('assignedPartner', 'name phone vehicleNumber');
     if (!booking) return fail(res, 404, 'BOOKING_NOT_FOUND', 'Booking not found');
     res.json(publicBooking(booking));
   } catch (err) {

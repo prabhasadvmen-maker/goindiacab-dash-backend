@@ -3,6 +3,7 @@ import WebRoute from '../models/WebRoute.js';
 import WebFareRule from '../models/WebFareRule.js';
 import WebBooking from '../models/WebBooking.js';
 import { uploadBase64ToR2, getPresignedUrl } from '../services/r2Service.js';
+import { sendStatusUpdate } from '../services/webNotifyService.js';
 
 const escapeRegex = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const key = (s) => String(s || '').trim().toLowerCase();
@@ -173,15 +174,31 @@ export const updateWebBookingStatus = handle(async (req, res) => {
   const { status, cancelReason, adminNote, assignedPartner } = req.body;
   const booking = await WebBooking.findOne({ bookingId: req.params.bookingId.toUpperCase() });
   if (!booking) return res.status(404).json({ success: false, message: 'Booking not found' });
+
+  let statusChanged = false;
   if (status !== undefined) {
     if (!STATUSES.includes(status)) return res.status(400).json({ success: false, message: 'Invalid status' });
+    statusChanged = booking.status !== status;
+    if (statusChanged) booking.statusHistory.push({ status, at: new Date() });
     booking.status = status;
     if (status === 'cancelled') booking.cancelReason = cancelReason || '';
   }
   if (adminNote !== undefined) booking.adminNote = adminNote;
   if (assignedPartner !== undefined) booking.assignedPartner = assignedPartner || null;
   await booking.save();
-  res.json({ success: true, data: booking, message: 'Booking updated' });
+
+  // Tell the customer about every real status change. A mail failure never fails the update itself.
+  let email = null;
+  if (statusChanged) {
+    try {
+      await booking.populate('assignedPartner', 'name phone vehicleNumber');
+      email = await sendStatusUpdate(booking);
+    } catch (err) {
+      console.error('Status email failed:', err.message);
+      email = { emailSent: false, skipped: 'send_failed' };
+    }
+  }
+  res.json({ success: true, data: booking, email, message: 'Booking updated' });
 });
 
 export const getWebsiteStats = handle(async (req, res) => {
