@@ -142,33 +142,77 @@ const computeRoute = async (origin, destination) => {
   return data.routes?.[0];
 };
 
-// Each end may carry a placeId (exact), an address, or lat/lng. If the exact form is rejected, retry with the address.
-export const getDistanceMatrix = async (origin, destination) => {
+const describe = (p) => p.placeId || p.address || `${p.lat},${p.lng}`;
+
+// Google answers 5xx ("Internal Error Encountered") or times out now and then; one more try usually succeeds.
+const computeRouteWithRetry = async (origin, destination) => {
   try {
-    let route;
+    return await computeRoute(origin, destination);
+  } catch (err) {
+    const status = err.response?.status;
+    if (status && status < 500 && status !== 429) throw err;
+    return computeRoute(origin, destination);
+  }
+};
+
+// A free-text place name can fail to geocode inside the Routes API; resolve it to exact coordinates ourselves instead.
+const toCoordinates = async (p) => {
+  if (p.placeId) return getPlaceDetails(p.placeId);
+  if (p.address) {
+    const [first] = await getAutoCompleteSuggestions(p.address.replace(/,?\s*India$/i, ''));
+    if (first?.placeId) return getPlaceDetails(first.placeId);
+  }
+  return null;
+};
+
+const usableRoute = (r) => r && r.distanceMeters != null && r.distanceMeters > 0;
+
+// Each end may carry a placeId (exact), an address, or lat/lng.
+// Order: as given (retried once on Google 5xx) -> address instead of placeId -> exact coordinates found via Places.
+export const getDistanceMatrix = async (origin, destination) => {
+  const label = `${describe(origin)} -> ${describe(destination)}`;
+  let lastError;
+
+  const attempt = async (o, d) => {
     try {
-      route = await computeRoute(origin, destination);
+      const route = await computeRouteWithRetry(o, d);
+      if (usableRoute(route)) return route;
+      lastError = new Error('Unable to calculate distance');
     } catch (err) {
-      const canRetry = (origin.placeId && origin.address) || (destination.placeId && destination.address);
-      if (!canRetry) throw err;
-      console.error('Google Routes (placeId) failed, retrying with address:', googleError(err));
-      route = await computeRoute(
-        origin.address ? { address: origin.address } : origin,
-        destination.address ? { address: destination.address } : destination
-      );
+      lastError = err;
     }
+    return null;
+  };
 
-    if (!route || route.distanceMeters == null) throw new Error('Unable to calculate distance');
+  let route = await attempt(origin, destination);
 
-    const distanceMeters = route.distanceMeters;
-    const durationSeconds = parseInt(String(route.duration || '0').replace('s', ''), 10) || 0;
+  if (!route && ((origin.placeId && origin.address) || (destination.placeId && destination.address))) {
+    route = await attempt(
+      origin.address ? { address: origin.address } : origin,
+      destination.address ? { address: destination.address } : destination
+    );
+  }
 
-    return {
-      distance: { text: `${(distanceMeters / 1000).toFixed(1)} km`, value: distanceMeters },
-      duration: { text: `${Math.round(durationSeconds / 60)} mins`, value: durationSeconds },
-    };
-  } catch (error) {
-    console.error('Google Routes error:', googleError(error));
+  if (!route) {
+    console.error(`Google Routes failed for ${label}: ${googleError(lastError)}; retrying with exact coordinates`);
+    try {
+      const [o, d] = await Promise.all([toCoordinates(origin), toCoordinates(destination)]);
+      if (o && d) route = await attempt({ lat: o.lat, lng: o.lng }, { lat: d.lat, lng: d.lng });
+    } catch (err) {
+      lastError = err;
+    }
+  }
+
+  if (!route) {
+    console.error(`Google Routes error for ${label}:`, googleError(lastError));
     throw new Error('Failed to calculate exact distance');
   }
+
+  const distanceMeters = route.distanceMeters;
+  const durationSeconds = parseInt(String(route.duration || '0').replace('s', ''), 10) || 0;
+
+  return {
+    distance: { text: `${(distanceMeters / 1000).toFixed(1)} km`, value: distanceMeters },
+    duration: { text: `${Math.round(durationSeconds / 60)} mins`, value: durationSeconds },
+  };
 };
