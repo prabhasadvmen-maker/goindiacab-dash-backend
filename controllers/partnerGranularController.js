@@ -110,7 +110,7 @@ export const updateName = async (req, res) => {
     const partner = await Partner.findByIdAndUpdate(
       req.partner._id, 
       { 'personalInfo.name': req.body.name, name: req.body.name }, 
-      { new: true }
+      { returnDocument: 'after' }
     );
     res.status(200).json({ success: true, message: 'Name updated', data: partner });
   } catch (error) {
@@ -124,7 +124,7 @@ export const updateEmail = async (req, res) => {
     const partner = await Partner.findByIdAndUpdate(
       req.partner._id, 
       { 'personalInfo.email': req.body.email, email: req.body.email }, 
-      { new: true }
+      { returnDocument: 'after' }
     );
     res.status(200).json({ success: true, message: 'Email updated', data: partner });
   } catch (error) {
@@ -138,7 +138,7 @@ export const updateDOB = async (req, res) => {
     const partner = await Partner.findByIdAndUpdate(
       req.partner._id, 
       { 'personalInfo.dateOfBirth': req.body.dob }, 
-      { new: true }
+      { returnDocument: 'after' }
     );
     res.status(200).json({ success: true, message: 'DOB updated', data: partner });
   } catch (error) {
@@ -152,7 +152,7 @@ export const updateGender = async (req, res) => {
     const partner = await Partner.findByIdAndUpdate(
       req.partner._id, 
       { 'personalInfo.gender': req.body.gender }, 
-      { new: true }
+      { returnDocument: 'after' }
     );
     res.status(200).json({ success: true, message: 'Gender updated', data: partner });
   } catch (error) {
@@ -166,7 +166,7 @@ export const updatePhoto = async (req, res) => {
     const partner = await Partner.findByIdAndUpdate(
       req.partner._id, 
       { 'personalInfo.profilePhoto': req.body.photoUrl, profilePhoto: req.body.photoUrl }, 
-      { new: true }
+      { returnDocument: 'after' }
     );
     res.status(200).json({ success: true, message: 'Photo updated', data: partner });
   } catch (error) {
@@ -181,7 +181,7 @@ export const updatePhoto = async (req, res) => {
 // 11. PATCH /profile/address/street
 export const updateAddressStreet = async (req, res) => {
   try {
-    const partner = await Partner.findByIdAndUpdate(req.partner._id, { 'address.street': req.body.street }, { new: true });
+    const partner = await Partner.findByIdAndUpdate(req.partner._id, { 'address.street': req.body.street }, { returnDocument: 'after' });
     res.status(200).json({ success: true, message: 'Street address updated', data: partner });
   } catch (error) { res.status(500).json({ success: false, message: 'Server error' }); }
 };
@@ -189,7 +189,7 @@ export const updateAddressStreet = async (req, res) => {
 // 12. PATCH /profile/address/city
 export const updateAddressCity = async (req, res) => {
   try {
-    const partner = await Partner.findByIdAndUpdate(req.partner._id, { 'address.city': req.body.city }, { new: true });
+    const partner = await Partner.findByIdAndUpdate(req.partner._id, { 'address.city': req.body.city }, { returnDocument: 'after' });
     res.status(200).json({ success: true, message: 'City updated', data: partner });
   } catch (error) { res.status(500).json({ success: false, message: 'Server error' }); }
 };
@@ -197,7 +197,7 @@ export const updateAddressCity = async (req, res) => {
 // 13. PATCH /profile/address/state
 export const updateAddressState = async (req, res) => {
   try {
-    const partner = await Partner.findByIdAndUpdate(req.partner._id, { 'address.state': req.body.state }, { new: true });
+    const partner = await Partner.findByIdAndUpdate(req.partner._id, { 'address.state': req.body.state }, { returnDocument: 'after' });
     res.status(200).json({ success: true, message: 'State updated', data: partner });
   } catch (error) { res.status(500).json({ success: false, message: 'Server error' }); }
 };
@@ -205,7 +205,7 @@ export const updateAddressState = async (req, res) => {
 // 14. PATCH /profile/address/pincode
 export const updateAddressPincode = async (req, res) => {
   try {
-    const partner = await Partner.findByIdAndUpdate(req.partner._id, { 'address.pincode': req.body.pincode }, { new: true });
+    const partner = await Partner.findByIdAndUpdate(req.partner._id, { 'address.pincode': req.body.pincode }, { returnDocument: 'after' });
     res.status(200).json({ success: true, message: 'Pincode updated', data: partner });
   } catch (error) { res.status(500).json({ success: false, message: 'Server error' }); }
 };
@@ -225,7 +225,7 @@ export const checkVehicleEligibility = async (req, res) => {
 // 16. PATCH /vehicle/make
 export const updateVehicleMake = async (req, res) => {
   try {
-    const partner = await Partner.findByIdAndUpdate(req.partner._id, { 'vehicleDetails.make': req.body.make }, { new: true });
+    const partner = await Partner.findByIdAndUpdate(req.partner._id, { 'vehicleDetails.make': req.body.make }, { returnDocument: 'after' });
     res.status(200).json({ success: true, message: 'Vehicle make updated', data: partner });
   } catch (error) { res.status(500).json({ success: false, message: 'Server error' }); }
 };
@@ -233,7 +233,7 @@ export const updateVehicleMake = async (req, res) => {
 // 17. PATCH /vehicle/model
 export const updateVehicleModel = async (req, res) => {
   try {
-    const partner = await Partner.findByIdAndUpdate(req.partner._id, { 'vehicleDetails.model': req.body.model }, { new: true });
+    const partner = await Partner.findByIdAndUpdate(req.partner._id, { 'vehicleDetails.model': req.body.model }, { returnDocument: 'after' });
     res.status(200).json({ success: true, message: 'Vehicle model updated', data: partner });
   } catch (error) { res.status(500).json({ success: false, message: 'Server error' }); }
 };
@@ -241,7 +241,7 @@ export const updateVehicleModel = async (req, res) => {
 // 18. PATCH /vehicle/year
 export const updateVehicleYear = async (req, res) => {
   try {
-    const partner = await Partner.findByIdAndUpdate(req.partner._id, { 'vehicleDetails.year': req.body.year }, { new: true });
+    const partner = await Partner.findByIdAndUpdate(req.partner._id, { 'vehicleDetails.year': req.body.year }, { returnDocument: 'after' });
     res.status(200).json({ success: true, message: 'Vehicle year updated', data: partner });
   } catch (error) { res.status(500).json({ success: false, message: 'Server error' }); }
 };
@@ -249,7 +249,7 @@ export const updateVehicleYear = async (req, res) => {
 // 19. PATCH /vehicle/color
 export const updateVehicleColor = async (req, res) => {
   try {
-    const partner = await Partner.findByIdAndUpdate(req.partner._id, { 'vehicleDetails.color': req.body.color }, { new: true });
+    const partner = await Partner.findByIdAndUpdate(req.partner._id, { 'vehicleDetails.color': req.body.color }, { returnDocument: 'after' });
     res.status(200).json({ success: true, message: 'Vehicle color updated', data: partner });
   } catch (error) { res.status(500).json({ success: false, message: 'Server error' }); }
 };
@@ -257,7 +257,7 @@ export const updateVehicleColor = async (req, res) => {
 // 20. PATCH /vehicle/plate-number
 export const updateVehiclePlateNumber = async (req, res) => {
   try {
-    const partner = await Partner.findByIdAndUpdate(req.partner._id, { vehicleNumber: req.body.plateNumber }, { new: true });
+    const partner = await Partner.findByIdAndUpdate(req.partner._id, { vehicleNumber: req.body.plateNumber }, { returnDocument: 'after' });
     res.status(200).json({ success: true, message: 'Plate number updated', data: partner });
   } catch (error) { res.status(500).json({ success: false, message: 'Server error' }); }
 };
@@ -269,7 +269,7 @@ export const updateVehiclePlateNumber = async (req, res) => {
 // 21. PATCH /profile/kyc/dl-front
 export const updateDLFront = async (req, res) => {
   try {
-    const partner = await Partner.findByIdAndUpdate(req.partner._id, { 'drivingLicence.frontImage': req.body.imageUrl }, { new: true });
+    const partner = await Partner.findByIdAndUpdate(req.partner._id, { 'drivingLicence.frontImage': req.body.imageUrl }, { returnDocument: 'after' });
     res.status(200).json({ success: true, message: 'DL Front updated', data: partner });
   } catch (error) { res.status(500).json({ success: false, message: 'Server error' }); }
 };
@@ -277,7 +277,7 @@ export const updateDLFront = async (req, res) => {
 // 22. PATCH /profile/kyc/dl-back
 export const updateDLBack = async (req, res) => {
   try {
-    const partner = await Partner.findByIdAndUpdate(req.partner._id, { 'drivingLicence.backImage': req.body.imageUrl }, { new: true });
+    const partner = await Partner.findByIdAndUpdate(req.partner._id, { 'drivingLicence.backImage': req.body.imageUrl }, { returnDocument: 'after' });
     res.status(200).json({ success: true, message: 'DL Back updated', data: partner });
   } catch (error) { res.status(500).json({ success: false, message: 'Server error' }); }
 };
@@ -285,7 +285,7 @@ export const updateDLBack = async (req, res) => {
 // 23. PATCH /profile/kyc/aadhaar-front
 export const updateAadhaarFront = async (req, res) => {
   try {
-    const partner = await Partner.findByIdAndUpdate(req.partner._id, { 'aadhaar.frontImage': req.body.imageUrl }, { new: true });
+    const partner = await Partner.findByIdAndUpdate(req.partner._id, { 'aadhaar.frontImage': req.body.imageUrl }, { returnDocument: 'after' });
     res.status(200).json({ success: true, message: 'Aadhaar Front updated', data: partner });
   } catch (error) { res.status(500).json({ success: false, message: 'Server error' }); }
 };
@@ -293,7 +293,7 @@ export const updateAadhaarFront = async (req, res) => {
 // 24. PATCH /profile/kyc/aadhaar-back
 export const updateAadhaarBack = async (req, res) => {
   try {
-    const partner = await Partner.findByIdAndUpdate(req.partner._id, { 'aadhaar.backImage': req.body.imageUrl }, { new: true });
+    const partner = await Partner.findByIdAndUpdate(req.partner._id, { 'aadhaar.backImage': req.body.imageUrl }, { returnDocument: 'after' });
     res.status(200).json({ success: true, message: 'Aadhaar Back updated', data: partner });
   } catch (error) { res.status(500).json({ success: false, message: 'Server error' }); }
 };
@@ -301,7 +301,7 @@ export const updateAadhaarBack = async (req, res) => {
 // 25. PATCH /profile/kyc/pan
 export const updatePAN = async (req, res) => {
   try {
-    const partner = await Partner.findByIdAndUpdate(req.partner._id, { 'pan.image': req.body.imageUrl }, { new: true });
+    const partner = await Partner.findByIdAndUpdate(req.partner._id, { 'pan.image': req.body.imageUrl }, { returnDocument: 'after' });
     res.status(200).json({ success: true, message: 'PAN updated', data: partner });
   } catch (error) { res.status(500).json({ success: false, message: 'Server error' }); }
 };
@@ -309,7 +309,7 @@ export const updatePAN = async (req, res) => {
 // 26. PATCH /vehicle/docs/rc
 export const updateVehicleRC = async (req, res) => {
   try {
-    const partner = await Partner.findByIdAndUpdate(req.partner._id, { 'vehicleDocuments.rc.image': req.body.imageUrl }, { new: true });
+    const partner = await Partner.findByIdAndUpdate(req.partner._id, { 'vehicleDocuments.rc.image': req.body.imageUrl }, { returnDocument: 'after' });
     res.status(200).json({ success: true, message: 'RC updated', data: partner });
   } catch (error) { res.status(500).json({ success: false, message: 'Server error' }); }
 };
@@ -317,7 +317,7 @@ export const updateVehicleRC = async (req, res) => {
 // 27. PATCH /vehicle/docs/insurance
 export const updateVehicleInsurance = async (req, res) => {
   try {
-    const partner = await Partner.findByIdAndUpdate(req.partner._id, { 'vehicleDocuments.insurance.image': req.body.imageUrl }, { new: true });
+    const partner = await Partner.findByIdAndUpdate(req.partner._id, { 'vehicleDocuments.insurance.image': req.body.imageUrl }, { returnDocument: 'after' });
     res.status(200).json({ success: true, message: 'Insurance updated', data: partner });
   } catch (error) { res.status(500).json({ success: false, message: 'Server error' }); }
 };
@@ -325,7 +325,7 @@ export const updateVehicleInsurance = async (req, res) => {
 // 28. PATCH /vehicle/docs/permit
 export const updateVehiclePermit = async (req, res) => {
   try {
-    const partner = await Partner.findByIdAndUpdate(req.partner._id, { 'vehicleDocuments.permit.image': req.body.imageUrl }, { new: true });
+    const partner = await Partner.findByIdAndUpdate(req.partner._id, { 'vehicleDocuments.permit.image': req.body.imageUrl }, { returnDocument: 'after' });
     res.status(200).json({ success: true, message: 'Permit updated', data: partner });
   } catch (error) { res.status(500).json({ success: false, message: 'Server error' }); }
 };
@@ -333,7 +333,7 @@ export const updateVehiclePermit = async (req, res) => {
 // 29. PATCH /vehicle/docs/fitness
 export const updateVehicleFitness = async (req, res) => {
   try {
-    const partner = await Partner.findByIdAndUpdate(req.partner._id, { 'vehicleDocuments.puc.image': req.body.imageUrl }, { new: true });
+    const partner = await Partner.findByIdAndUpdate(req.partner._id, { 'vehicleDocuments.puc.image': req.body.imageUrl }, { returnDocument: 'after' });
     res.status(200).json({ success: true, message: 'Fitness updated', data: partner });
   } catch (error) { res.status(500).json({ success: false, message: 'Server error' }); }
 };
@@ -341,7 +341,7 @@ export const updateVehicleFitness = async (req, res) => {
 // 30. PATCH /vehicle/photos/front
 export const updateVehiclePhotoFront = async (req, res) => {
   try {
-    const partner = await Partner.findByIdAndUpdate(req.partner._id, { 'vehiclePhotos.front': req.body.imageUrl }, { new: true });
+    const partner = await Partner.findByIdAndUpdate(req.partner._id, { 'vehiclePhotos.front': req.body.imageUrl }, { returnDocument: 'after' });
     res.status(200).json({ success: true, message: 'Vehicle Front Photo updated', data: partner });
   } catch (error) { res.status(500).json({ success: false, message: 'Server error' }); }
 };
@@ -353,7 +353,7 @@ export const updateVehiclePhotoFront = async (req, res) => {
 // 31. PATCH /vehicle/photos/back
 export const updateVehiclePhotoBack = async (req, res) => {
   try {
-    const partner = await Partner.findByIdAndUpdate(req.partner._id, { 'vehiclePhotos.back': req.body.imageUrl }, { new: true });
+    const partner = await Partner.findByIdAndUpdate(req.partner._id, { 'vehiclePhotos.back': req.body.imageUrl }, { returnDocument: 'after' });
     res.status(200).json({ success: true, message: 'Vehicle Back Photo updated', data: partner });
   } catch (error) { res.status(500).json({ success: false, message: 'Server error' }); }
 };
@@ -361,7 +361,7 @@ export const updateVehiclePhotoBack = async (req, res) => {
 // 32. PATCH /vehicle/photos/left
 export const updateVehiclePhotoLeft = async (req, res) => {
   try {
-    const partner = await Partner.findByIdAndUpdate(req.partner._id, { 'vehiclePhotos.left': req.body.imageUrl }, { new: true });
+    const partner = await Partner.findByIdAndUpdate(req.partner._id, { 'vehiclePhotos.left': req.body.imageUrl }, { returnDocument: 'after' });
     res.status(200).json({ success: true, message: 'Vehicle Left Photo updated', data: partner });
   } catch (error) { res.status(500).json({ success: false, message: 'Server error' }); }
 };
@@ -369,7 +369,7 @@ export const updateVehiclePhotoLeft = async (req, res) => {
 // 33. PATCH /vehicle/photos/right
 export const updateVehiclePhotoRight = async (req, res) => {
   try {
-    const partner = await Partner.findByIdAndUpdate(req.partner._id, { 'vehiclePhotos.right': req.body.imageUrl }, { new: true });
+    const partner = await Partner.findByIdAndUpdate(req.partner._id, { 'vehiclePhotos.right': req.body.imageUrl }, { returnDocument: 'after' });
     res.status(200).json({ success: true, message: 'Vehicle Right Photo updated', data: partner });
   } catch (error) { res.status(500).json({ success: false, message: 'Server error' }); }
 };
@@ -377,7 +377,7 @@ export const updateVehiclePhotoRight = async (req, res) => {
 // 34. PATCH /profile/bank/account-name
 export const updateBankAccountName = async (req, res) => {
   try {
-    const partner = await Partner.findByIdAndUpdate(req.partner._id, { 'bankAccount.accountHolderName': req.body.accountName }, { new: true });
+    const partner = await Partner.findByIdAndUpdate(req.partner._id, { 'bankAccount.accountHolderName': req.body.accountName }, { returnDocument: 'after' });
     res.status(200).json({ success: true, message: 'Bank Account Name updated', data: partner });
   } catch (error) { res.status(500).json({ success: false, message: 'Server error' }); }
 };
@@ -385,7 +385,7 @@ export const updateBankAccountName = async (req, res) => {
 // 35. PATCH /profile/bank/account-number
 export const updateBankAccountNumber = async (req, res) => {
   try {
-    const partner = await Partner.findByIdAndUpdate(req.partner._id, { 'bankAccount.accountNumber': req.body.accountNumber }, { new: true });
+    const partner = await Partner.findByIdAndUpdate(req.partner._id, { 'bankAccount.accountNumber': req.body.accountNumber }, { returnDocument: 'after' });
     res.status(200).json({ success: true, message: 'Bank Account Number updated', data: partner });
   } catch (error) { res.status(500).json({ success: false, message: 'Server error' }); }
 };
@@ -393,7 +393,7 @@ export const updateBankAccountNumber = async (req, res) => {
 // 36. PATCH /profile/bank/ifsc
 export const updateBankIFSC = async (req, res) => {
   try {
-    const partner = await Partner.findByIdAndUpdate(req.partner._id, { 'bankAccount.ifscCode': req.body.ifsc }, { new: true });
+    const partner = await Partner.findByIdAndUpdate(req.partner._id, { 'bankAccount.ifscCode': req.body.ifsc }, { returnDocument: 'after' });
     res.status(200).json({ success: true, message: 'Bank IFSC updated', data: partner });
   } catch (error) { res.status(500).json({ success: false, message: 'Server error' }); }
 };
@@ -401,7 +401,7 @@ export const updateBankIFSC = async (req, res) => {
 // 37. PATCH /profile/bank/bank-name
 export const updateBankName = async (req, res) => {
   try {
-    const partner = await Partner.findByIdAndUpdate(req.partner._id, { 'bankAccount.bankName': req.body.bankName }, { new: true });
+    const partner = await Partner.findByIdAndUpdate(req.partner._id, { 'bankAccount.bankName': req.body.bankName }, { returnDocument: 'after' });
     res.status(200).json({ success: true, message: 'Bank Name updated', data: partner });
   } catch (error) { res.status(500).json({ success: false, message: 'Server error' }); }
 };
@@ -422,7 +422,7 @@ export const verifyOnboardingPayment = async (req, res) => {
     const partner = await Partner.findByIdAndUpdate(req.partner._id, { 
       'onboardingPayment.status': 'completed',
       'onboardingPayment.transactionId': paymentId
-    }, { new: true });
+    }, { returnDocument: 'after' });
     res.status(200).json({ success: true, message: 'Payment verified successfully', data: partner });
   } catch (error) { res.status(500).json({ success: false, message: 'Server error' }); }
 };
@@ -430,7 +430,7 @@ export const verifyOnboardingPayment = async (req, res) => {
 // 40. POST /onboarding/submit-application
 export const submitPartnerApplication = async (req, res) => {
   try {
-    const partner = await Partner.findByIdAndUpdate(req.partner._id, { applicationStatus: 'pending_review' }, { new: true });
+    const partner = await Partner.findByIdAndUpdate(req.partner._id, { applicationStatus: 'pending_review' }, { returnDocument: 'after' });
     res.status(200).json({ success: true, message: 'Application submitted for admin review', data: partner });
   } catch (error) { res.status(500).json({ success: false, message: 'Server error' }); }
 };
@@ -471,7 +471,7 @@ export const acceptRideRequest = async (req, res) => {
     const booking = await Booking.findOneAndUpdate(
       { _id: req.params.id, status: 'PENDING' }, 
       { status: 'ACCEPTED', partner: req.partner._id }, 
-      { new: true }
+      { returnDocument: 'after' }
     );
     if(!booking) return res.status(400).json({ success: false, message: 'Ride no longer available' });
     res.status(200).json({ success: true, message: 'Ride accepted', data: booking });
@@ -492,7 +492,7 @@ export const markDriverArrived = async (req, res) => {
     const booking = await Booking.findOneAndUpdate(
       { _id: req.params.id, partner: req.partner._id }, 
       { status: 'ARRIVED' }, 
-      { new: true }
+      { returnDocument: 'after' }
     );
     res.status(200).json({ success: true, message: 'Driver arrived at pickup', data: booking });
   } catch (error) { res.status(500).json({ success: false, message: 'Server error' }); }
@@ -518,7 +518,7 @@ export const completeTrip = async (req, res) => {
     const booking = await Booking.findOneAndUpdate(
       { _id: req.params.id, partner: req.partner._id }, 
       { status: 'COMPLETED' }, 
-      { new: true }
+      { returnDocument: 'after' }
     );
     res.status(200).json({ success: true, message: 'Trip completed', data: booking });
   } catch (error) { res.status(500).json({ success: false, message: 'Server error' }); }
@@ -531,7 +531,7 @@ export const cancelTripByPartner = async (req, res) => {
     const booking = await Booking.findOneAndUpdate(
       { _id: req.params.id, partner: req.partner._id }, 
       { status: 'CANCELLED', cancellationReason: reason }, 
-      { new: true }
+      { returnDocument: 'after' }
     );
     res.status(200).json({ success: true, message: 'Trip cancelled', data: booking });
   } catch (error) { res.status(500).json({ success: false, message: 'Server error' }); }
@@ -751,7 +751,7 @@ export const getActivityLogs = async (req, res) => {
 export const toggleOnlineStatus = async (req, res) => {
   try {
     const { isOnline } = req.body;
-    const partner = await Partner.findByIdAndUpdate(req.partner._id, { isOnline }, { new: true });
+    const partner = await Partner.findByIdAndUpdate(req.partner._id, { isOnline }, { returnDocument: 'after' });
     res.status(200).json({ success: true, message: `Status changed to ${isOnline ? 'Online' : 'Offline'}`, data: partner });
   } catch (error) { res.status(500).json({ success: false, message: 'Server error' }); }
 };
@@ -760,7 +760,7 @@ export const toggleOnlineStatus = async (req, res) => {
 export const pingLiveLocation = async (req, res) => {
   try {
     const { lat, lng } = req.body;
-    const partner = await Partner.findByIdAndUpdate(req.partner._id, { location: { type: 'Point', coordinates: [lng, lat] } }, { new: true });
+    const partner = await Partner.findByIdAndUpdate(req.partner._id, { location: { type: 'Point', coordinates: [lng, lat] } }, { returnDocument: 'after' });
     res.status(200).json({ success: true, message: 'Location updated successfully' });
   } catch (error) { res.status(500).json({ success: false, message: 'Server error' }); }
 };

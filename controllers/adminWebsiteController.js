@@ -46,7 +46,7 @@ export const createCity = handle(async (req, res) => {
 
 export const updateCity = handle(async (req, res) => {
   if (!isSuper(req)) return forbid(res);
-  const data = await WebCity.findByIdAndUpdate(req.params.id, pick(req.body, CITY_FIELDS), { new: true, runValidators: true });
+  const data = await WebCity.findByIdAndUpdate(req.params.id, pick(req.body, CITY_FIELDS), { returnDocument: 'after', runValidators: true });
   if (!data) return res.status(404).json({ success: false, message: 'City not found' });
   res.json({ success: true, data });
 });
@@ -88,7 +88,7 @@ export const updateRoute = handle(async (req, res) => {
   if (!isSuper(req)) return forbid(res);
   const update = pick(req.body, ['distanceKm', 'durationMins', 'isActive']);
   update.source = 'admin'; // editing an auto-cached route makes it an admin-owned value
-  const data = await WebRoute.findByIdAndUpdate(req.params.id, update, { new: true, runValidators: true });
+  const data = await WebRoute.findByIdAndUpdate(req.params.id, update, { returnDocument: 'after', runValidators: true });
   if (!data) return res.status(404).json({ success: false, message: 'Route not found' });
   res.json({ success: true, data });
 });
@@ -135,7 +135,7 @@ export const createFareRule = handle(async (req, res) => {
 
 export const updateFareRule = handle(async (req, res) => {
   if (!isSuper(req)) return forbid(res);
-  const data = await WebFareRule.findByIdAndUpdate(req.params.id, await withUploadedImage(req.body), { new: true, runValidators: true });
+  const data = await WebFareRule.findByIdAndUpdate(req.params.id, await withUploadedImage(req.body), { returnDocument: 'after', runValidators: true });
   if (!data) return res.status(404).json({ success: false, message: 'Fare rule not found' });
   res.json({ success: true, data });
 });
