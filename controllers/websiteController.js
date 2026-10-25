@@ -101,7 +101,7 @@ export const suggestDestinations = async (req, res) => {
   }
 };
 
-// GET /api/locations/suggest?q=del  — FROM field: admin-managed cities first, topped up with Google cities
+// GET /api/locations/suggest?q=del  — FROM field: admin-managed cities only (limited list)
 export const suggestLocations = async (req, res) => {
   try {
     const q = String(req.query.q || '').trim();
@@ -115,21 +115,6 @@ export const suggestLocations = async (req, res) => {
         .lean();
       const list = cities.map((c) => ({ label: c.state ? `${c.name}, ${c.state}` : c.name, value: c.name }));
 
-      // Not enough admin cities for this query: fill the rest from Google so any Indian city works.
-      if (list.length < 5) {
-        try {
-          const seen = new Set(list.map((s) => s.value.toLowerCase()));
-          const places = await getAutoCompleteSuggestions(q, { cities: true });
-          for (const p of places) {
-            if (seen.has(p.mainText.toLowerCase())) continue;
-            seen.add(p.mainText.toLowerCase());
-            const state = shortRegion(p.secondaryText);
-            list.push({ label: state ? `${p.mainText}, ${state}` : p.mainText, value: p.mainText });
-          }
-        } catch (err) {
-          console.error('suggestLocations google fallback:', err.message);
-        }
-      }
       return list;
     });
 
