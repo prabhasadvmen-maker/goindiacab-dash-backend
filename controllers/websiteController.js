@@ -125,6 +125,13 @@ export const suggestLocations = async (req, res) => {
   }
 };
 
+// Pickup is limited to the admin-managed cities (the FROM suggestions); anything else is outside the service area.
+const isServiceableCity = async (name) => {
+  const city = String(name || '').split(',')[0].replace(/\s*\/\s*NCR/i, '').trim();
+  if (!city) return false;
+  return !!(await WebCity.exists({ isActive: true, name: new RegExp('^' + escapeRegex(city) + '$', 'i') }));
+};
+
 // from→to, or from→stop→to when a stop is given
 const resolveTripDistance = async (from, to, stop) => {
   if (!stop) return resolveDistance(String(from), String(to));
@@ -143,6 +150,9 @@ export const getDistance = async (req, res) => {
     const { from, to } = req.query;
     const stop = String(req.query.stop || '').trim();
     if (!from || !to) return fail(res, 400, 'VALIDATION_ERROR', 'from and to are required');
+    if (!(await isServiceableCity(from))) {
+      return fail(res, 422, 'SERVICE_NOT_AVAILABLE', 'Service is not available at this pickup location');
+    }
     res.json(await resolveTripDistance(from, to, stop));
   } catch (err) {
     fail(res, 422, 'DISTANCE_UNAVAILABLE', err.message);
