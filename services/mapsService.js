@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-// Server-side key (no referrer restriction). Falls back to the browser key only for local testing.
+// Server-side key. Falls back to the browser key only for local testing.
 const getGoogleKey = () => process.env.GOOGLE_MAP_SERVER_API || process.env.GOOGLE_MAP_API;
 
 const requireKey = () => {
@@ -12,19 +12,59 @@ const requireKey = () => {
 const googleError = (err) =>
   err.response?.data?.error?.message || err.message;
 
-// Server-side calls need a Referer header when the key has HTTP referrer restrictions.
-// FRONTEND_URL may hold several comma-separated URLs or a trailing slash; Google matches the referrer against patterns like "site.com/*".
-// GOOGLE_MAPS_REFERER must be a domain the Google key allows (e.g. https://goindiacab.com); it falls back to FRONTEND_URL,
-// which on production is the dashboard domain and is usually not in the key's referrer list.
-const frontendOrigin = () => {
-  const first = String(process.env.GOOGLE_MAPS_REFERER || process.env.FRONTEND_URL || 'http://localhost:3000').split(',')[0].trim();
-  try { return new URL(first).origin; } catch { return 'http://localhost:3000'; }
+// If the Google key is restricted by HTTP referrer, server calls must send a Referer the key allows.
+// Candidates, in order: GOOGLE_MAPS_REFERER (comma list; "none" = send no referer, for IP-restricted keys),
+// then the website/dashboard URLs. A blocked referer is retried with the next candidate and the working one is remembered.
+const toOrigin = (v) => { try { return new URL(String(v).trim()).origin; } catch { return null; } };
+
+const refererCandidates = () => {
+  const list = [];
+  for (const v of String(process.env.GOOGLE_MAPS_REFERER || '').split(',')) {
+    if (v.trim().toLowerCase() === 'none') list.push(null);
+    else if (toOrigin(v)) list.push(toOrigin(v));
+  }
+  for (const v of [process.env.WEBSITE_URL, process.env.FRONTEND_URL].flatMap((x) => String(x || '').split(','))) {
+    if (toOrigin(v)) list.push(toOrigin(v));
+  }
+  list.push('https://goindiacab.com', 'https://www.goindiacab.com');
+  return [...new Set(list)];
 };
 
-// GOOGLE_MAPS_REFERER=none sends no Referer/Origin at all: use it when the key is restricted by server IP instead of referrer.
-const serverHeaders = (key) => {
-  if (String(process.env.GOOGLE_MAPS_REFERER || '').toLowerCase() === 'none') return { 'X-Goog-Api-Key': key };
-  return { 'X-Goog-Api-Key': key, 'Referer': `${frontendOrigin()}/`, 'Origin': frontendOrigin() };
+let workingReferer; // undefined = not found yet
+
+const isRefererBlocked = (err) => /referer/i.test(googleError(err)) && /blocked/i.test(googleError(err));
+
+const buildHeaders = (key, referer, extra = {}) => ({
+  'X-Goog-Api-Key': key,
+  ...(referer ? { Referer: `${referer}/`, Origin: referer } : {}),
+  ...extra,
+});
+
+// Runs a Google request, trying referer candidates only when Google reports the referer as blocked.
+const googleRequest = async ({ method, url, data, headers = {}, timeout }) => {
+  const key = requireKey();
+  const candidates = workingReferer !== undefined ? [workingReferer] : refererCandidates();
+  let lastErr;
+  for (const referer of candidates) {
+    try {
+      const res = await axios({ method, url, data, timeout, headers: buildHeaders(key, referer, headers) });
+      if (workingReferer === undefined) {
+        workingReferer = referer;
+        console.log(`Google Maps: using referer ${referer || '(none)'}`);
+      }
+      return res.data;
+    } catch (err) {
+      lastErr = err;
+      if (!isRefererBlocked(err)) throw err;
+      if (workingReferer !== undefined) workingReferer = undefined; // it stopped working: search again next time
+    }
+  }
+  console.error(
+    `Google Maps: every referer was blocked (tried ${candidates.map((c) => c || 'none').join(', ')}). ` +
+    `Add one of them to the key's website restrictions, or restrict the key by server IP and set GOOGLE_MAPS_REFERER=none. ` +
+    `Key in use: ${process.env.GOOGLE_MAP_SERVER_API ? 'GOOGLE_MAP_SERVER_API' : 'GOOGLE_MAP_API (browser key!)'}`
+  );
+  throw lastErr;
 };
 
 // Places API (New) - autocomplete, restricted to India.
@@ -36,9 +76,8 @@ export const getAutoCompleteSuggestions = async (input, opts = {}) => {
     const body = { input, includedRegionCodes: ['in'], languageCode: 'en' };
     if (opts.cities) body.includedPrimaryTypes = ['(cities)'];
 
-    const { data } = await axios.post('https://places.googleapis.com/v1/places:autocomplete', body, {
-      headers: serverHeaders(requireKey()),
-      timeout: 5000,
+    const data = await googleRequest({
+      method: 'post', url: 'https://places.googleapis.com/v1/places:autocomplete', data: body, timeout: 5000,
     });
 
     return (data.suggestions || [])
@@ -60,11 +99,10 @@ export const getPlaceDetails = async (placeId) => {
   if (!placeId) throw new Error('Place ID is required');
 
   try {
-    const { data } = await axios.get(`https://places.googleapis.com/v1/places/${encodeURIComponent(placeId)}`, {
-      headers: {
-        ...serverHeaders(requireKey()),
-        'X-Goog-FieldMask': 'location,formattedAddress',
-      },
+    const data = await googleRequest({
+      method: 'get',
+      url: `https://places.googleapis.com/v1/places/${encodeURIComponent(placeId)}`,
+      headers: { 'X-Goog-FieldMask': 'location,formattedAddress' },
       timeout: 5000,
     });
 
@@ -88,23 +126,19 @@ const toWaypoint = (p) => {
 };
 
 const computeRoute = async (origin, destination) => {
-  const { data } = await axios.post(
-    'https://routes.googleapis.com/directions/v2:computeRoutes',
-    {
+  const data = await googleRequest({
+    method: 'post',
+    url: 'https://routes.googleapis.com/directions/v2:computeRoutes',
+    data: {
       origin: toWaypoint(origin),
       destination: toWaypoint(destination),
       travelMode: 'DRIVE',
       regionCode: 'IN',
       units: 'METRIC',
     },
-    {
-      headers: {
-        ...serverHeaders(requireKey()),
-        'X-Goog-FieldMask': 'routes.distanceMeters,routes.duration',
-      },
-      timeout: 8000,
-    }
-  );
+    headers: { 'X-Goog-FieldMask': 'routes.distanceMeters,routes.duration' },
+    timeout: 8000,
+  });
   return data.routes?.[0];
 };
 
