@@ -13,10 +13,16 @@ const googleError = (err) =>
   err.response?.data?.error?.message || err.message;
 
 // Server-side calls need a Referer header when the key has HTTP referrer restrictions.
+// FRONTEND_URL may hold several comma-separated URLs or a trailing slash; Google matches the referrer against patterns like "site.com/*".
+const frontendOrigin = () => {
+  const first = String(process.env.FRONTEND_URL || 'http://localhost:3000').split(',')[0].trim();
+  try { return new URL(first).origin; } catch { return 'http://localhost:3000'; }
+};
+
 const serverHeaders = (key) => ({
   'X-Goog-Api-Key': key,
-  'Referer': process.env.FRONTEND_URL || 'http://localhost:3000',
-  'Origin': process.env.FRONTEND_URL || 'http://localhost:3000',
+  'Referer': `${frontendOrigin()}/`,
+  'Origin': frontendOrigin(),
 });
 
 // Places API (New) - autocomplete, restricted to India.
@@ -73,32 +79,49 @@ export const getPlaceDetails = async (placeId) => {
 };
 
 // Routes API - driving distance/time. Each end is { lat, lng } or { address }.
-const toWaypoint = (p) =>
-  p.address
-    ? { address: p.address }
-    : { location: { latLng: { latitude: Number(p.lat), longitude: Number(p.lng) } } };
+const toWaypoint = (p) => {
+  if (p.placeId) return { placeId: p.placeId };
+  if (p.address) return { address: p.address };
+  return { location: { latLng: { latitude: Number(p.lat), longitude: Number(p.lng) } } };
+};
 
+const computeRoute = async (origin, destination) => {
+  const { data } = await axios.post(
+    'https://routes.googleapis.com/directions/v2:computeRoutes',
+    {
+      origin: toWaypoint(origin),
+      destination: toWaypoint(destination),
+      travelMode: 'DRIVE',
+      regionCode: 'IN',
+      units: 'METRIC',
+    },
+    {
+      headers: {
+        ...serverHeaders(requireKey()),
+        'X-Goog-FieldMask': 'routes.distanceMeters,routes.duration',
+      },
+      timeout: 8000,
+    }
+  );
+  return data.routes?.[0];
+};
+
+// Each end may carry a placeId (exact), an address, or lat/lng. If the exact form is rejected, retry with the address.
 export const getDistanceMatrix = async (origin, destination) => {
   try {
-    const { data } = await axios.post(
-      'https://routes.googleapis.com/directions/v2:computeRoutes',
-      {
-        origin: toWaypoint(origin),
-        destination: toWaypoint(destination),
-        travelMode: 'DRIVE',
-        regionCode: 'IN',
-        units: 'METRIC',
-      },
-      {
-        headers: {
-          ...serverHeaders(requireKey()),
-          'X-Goog-FieldMask': 'routes.distanceMeters,routes.duration',
-        },
-        timeout: 8000,
-      }
-    );
+    let route;
+    try {
+      route = await computeRoute(origin, destination);
+    } catch (err) {
+      const canRetry = (origin.placeId && origin.address) || (destination.placeId && destination.address);
+      if (!canRetry) throw err;
+      console.error('Google Routes (placeId) failed, retrying with address:', googleError(err));
+      route = await computeRoute(
+        origin.address ? { address: origin.address } : origin,
+        destination.address ? { address: destination.address } : destination
+      );
+    }
 
-    const route = data.routes?.[0];
     if (!route || route.distanceMeters == null) throw new Error('Unable to calculate distance');
 
     const distanceMeters = route.distanceMeters;

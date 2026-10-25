@@ -79,10 +79,17 @@ export const suggestDestinations = async (req, res) => {
 
     const suggestions = await suggestCache.wrap(`to:${q.toLowerCase()}`, async () => {
       const places = await getAutoCompleteSuggestions(q, { cities: false });
-      return places.map((p) => {
+      const seen = new Set();
+      const out = [];
+      for (const p of places) {
         const state = p.secondaryText.replace(/,?\s*India$/i, '').trim();
-        return { label: state ? `${p.mainText}, ${state}` : p.mainText, value: p.mainText };
-      });
+        // Keep the state in the value so "Chandigarh, Punjab" and "Chandigarh, Haryana" stay distinct for routing.
+        const label = state ? `${p.mainText}, ${state}` : p.mainText;
+        if (seen.has(label.toLowerCase())) continue;
+        seen.add(label.toLowerCase());
+        out.push({ label, value: label });
+      }
+      return out;
     });
     res.json({ suggestions: suggestions.slice(0, 8) });
   } catch (err) {

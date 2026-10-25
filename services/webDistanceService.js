@@ -4,7 +4,10 @@ import { getDistanceMatrix } from './mapsService.js';
 const key = (s) => String(s || '').trim().toLowerCase();
 
 // The Routes API resolves city names itself, no separate geocoding step needed.
-const cityAddress = (name) => ({ address: `${String(name).trim()}, India` });
+const cityAddress = (name) => {
+  const clean = String(name).replace(/\s*\/\s*NCR/i, '').replace(/,?\s*India\s*$/i, '').trim();
+  return { address: `${clean}, India` };
+};
 
 // Order: admin/cached route (either direction) -> Google Routes (cached for next time).
 export const resolveDistance = async (from, to) => {
