@@ -14,8 +14,10 @@ const googleError = (err) =>
 
 // Server-side calls need a Referer header when the key has HTTP referrer restrictions.
 // FRONTEND_URL may hold several comma-separated URLs or a trailing slash; Google matches the referrer against patterns like "site.com/*".
+// GOOGLE_MAPS_REFERER must be a domain the Google key allows (e.g. https://goindiacab.com); it falls back to FRONTEND_URL,
+// which on production is the dashboard domain and is usually not in the key's referrer list.
 const frontendOrigin = () => {
-  const first = String(process.env.FRONTEND_URL || 'http://localhost:3000').split(',')[0].trim();
+  const first = String(process.env.GOOGLE_MAPS_REFERER || process.env.FRONTEND_URL || 'http://localhost:3000').split(',')[0].trim();
   try { return new URL(first).origin; } catch { return 'http://localhost:3000'; }
 };
 

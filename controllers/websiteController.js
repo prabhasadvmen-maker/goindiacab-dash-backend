@@ -14,6 +14,9 @@ import { getPresignedUrl } from '../services/r2Service.js';
 import { createTtlCache } from '../services/ttlCache.js';
 
 const escapeRegex = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+// "Railway Rd, Colony, Varanasi, Uttar Pradesh, India" -> "Varanasi, Uttar Pradesh" (keeps labels short but unambiguous)
+const shortRegion = (secondary) =>
+  String(secondary || '').replace(/,?\s*India$/i, '').split(',').map((x) => x.trim()).filter(Boolean).slice(-2).join(', ');
 const fail = (res, status, error, message) => res.status(status).json({ success: false, error, message });
 
 // Short-lived caches for public reads that rarely change (admin edits show up within a minute).
@@ -82,7 +85,7 @@ export const suggestDestinations = async (req, res) => {
       const seen = new Set();
       const out = [];
       for (const p of places) {
-        const state = p.secondaryText.replace(/,?\s*India$/i, '').trim();
+        const state = shortRegion(p.secondaryText);
         // Keep the state in the value so "Chandigarh, Punjab" and "Chandigarh, Haryana" stay distinct for routing.
         const label = state ? `${p.mainText}, ${state}` : p.mainText;
         if (seen.has(label.toLowerCase())) continue;
@@ -120,7 +123,7 @@ export const suggestLocations = async (req, res) => {
           for (const p of places) {
             if (seen.has(p.mainText.toLowerCase())) continue;
             seen.add(p.mainText.toLowerCase());
-            const state = p.secondaryText.replace(/,?\s*India$/i, '').trim();
+            const state = shortRegion(p.secondaryText);
             list.push({ label: state ? `${p.mainText}, ${state}` : p.mainText, value: p.mainText });
           }
         } catch (err) {
