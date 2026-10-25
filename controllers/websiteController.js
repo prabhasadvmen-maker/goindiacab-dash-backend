@@ -313,10 +313,19 @@ export const createBooking = async (req, res) => {
       return fail(res, 422, 'DISTANCE_UNAVAILABLE', 'Could not determine trip distance');
     }
 
+    // Round trip: days come from pickup -> return date, never from the client's number.
+    const returnDate = /^\d{4}-\d{2}-\d{2}$/.test(trip.returnDate || '') ? trip.returnDate : '';
+    if (tripType === 'roundtrip' && returnDate && returnDate < trip.date) {
+      return fail(res, 400, 'VALIDATION_ERROR', 'Return date cannot be before the pickup date');
+    }
+    const tripDays = tripType === 'roundtrip' && returnDate
+      ? Math.min(30, Math.max(1, Math.round((Date.parse(returnDate) - Date.parse(trip.date)) / 86400000) + 1))
+      : Math.max(1, Math.min(30, Number(trip.days) || 1));
+
     let computed;
     try {
       computed = await computeForRequest({
-        vehicleType: vehicle.id, distanceKm, tripType, package: trip.package, days: trip.days,
+        vehicleType: vehicle.id, distanceKm, tripType, package: trip.package, days: tripDays,
       });
     } catch (err) {
       return fail(res, err.code === 'VEHICLE_NOT_FOUND' ? 404 : 400, err.code || 'FARE_ERROR', err.message);
@@ -353,7 +362,7 @@ export const createBooking = async (req, res) => {
       },
       trip: {
         from: trip.from, to: trip.to || '', stop, date: trip.date, time: trip.time, tripType,
-        package: trip.package || '', days: Math.max(1, Number(trip.days) || 1), distanceKm,
+        package: trip.package || '', days: tripDays, returnDate: tripType === 'roundtrip' ? returnDate : '', distanceKm,
       },
       vehicle: {
         id: computed.rule.vehicleType, name: computed.rule.name,

@@ -26,6 +26,7 @@ const webBookingSchema = new mongoose.Schema(
       tripType: { type: String, enum: ['oneway', 'roundtrip', 'local'], default: 'oneway' },
       package: { type: String, default: '' },
       days: { type: Number, default: 1 },
+      returnDate: { type: String, default: '' }, // YYYY-MM-DD, round trips only
       distanceKm: { type: Number, default: 0 },
     },
     vehicle: {
