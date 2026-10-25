@@ -1,4 +1,5 @@
 import Booking from '../models/Booking.js';
+import WebBooking from '../models/WebBooking.js';
 import User from '../models/User.js';
 import Partner from '../models/Partner.js';
 
@@ -32,7 +33,24 @@ export const getAnalytics = async (req, res) => {
       { $sort: { "_id": 1 } }
     ];
 
-    const results = await Booking.aggregate(pipeline);
+    const dayFormat = { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } };
+    const [appResults, webResults] = await Promise.all([
+      Booking.aggregate(pipeline),
+      WebBooking.aggregate([
+        { $match: { status: 'completed', createdAt: { $gte: startDate } } },
+        { $group: { _id: dayFormat, revenue: { $sum: "$fare.total" }, rides: { $sum: 1 } } },
+      ]),
+    ]);
+
+    // Merge app and website trips per day.
+    const byDay = new Map();
+    for (const r of [...appResults, ...webResults]) {
+      const cur = byDay.get(r._id) || { _id: r._id, revenue: 0, rides: 0 };
+      cur.revenue += r.revenue;
+      cur.rides += r.rides;
+      byDay.set(r._id, cur);
+    }
+    const results = [...byDay.values()];
 
     // Fill missing dates with 0
     const chartData = [];

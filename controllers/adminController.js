@@ -2,6 +2,7 @@ import Admin from '../models/Admin.js';
 import User from '../models/User.js';
 import Partner from '../models/Partner.js';
 import Booking from '../models/Booking.js';
+import WebBooking from '../models/WebBooking.js';
 import jwt from 'jsonwebtoken';
 
 // @desc    Get all admins (with search & filter)
@@ -164,21 +165,30 @@ export const getSuperAdminStats = async (req, res) => {
       totalUsers,
       totalPartners,
       totalAdmins,
-      totalTrips,
-      completedBookings
+      appTrips,
+      webTrips,
+      completedBookings,
+      completedWebBookings
     ] = await Promise.all([
       User.countDocuments(),
       Partner.countDocuments(),
       Admin.countDocuments(),
       Booking.countDocuments(),
+      // Website (guest) bookings live in their own collection.
+      WebBooking.countDocuments({ status: { $ne: 'cancelled' } }),
       // Sum in the database instead of loading every completed booking into memory.
       Booking.aggregate([
         { $match: { status: 'COMPLETED' } },
         { $group: { _id: null, total: { $sum: '$fare.estimated' } } },
-      ])
+      ]),
+      WebBooking.aggregate([
+        { $match: { status: 'completed' } },
+        { $group: { _id: null, total: { $sum: '$fare.total' } } },
+      ]),
     ]);
 
-    const totalRevenue = completedBookings[0]?.total || 0;
+    const totalTrips = appTrips + webTrips;
+    const totalRevenue = (completedBookings[0]?.total || 0) + (completedWebBookings[0]?.total || 0);
 
     res.status(200).json({
       success: true,
