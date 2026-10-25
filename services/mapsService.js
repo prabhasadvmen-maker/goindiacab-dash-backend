@@ -21,11 +21,11 @@ const frontendOrigin = () => {
   try { return new URL(first).origin; } catch { return 'http://localhost:3000'; }
 };
 
-const serverHeaders = (key) => ({
-  'X-Goog-Api-Key': key,
-  'Referer': `${frontendOrigin()}/`,
-  'Origin': frontendOrigin(),
-});
+// GOOGLE_MAPS_REFERER=none sends no Referer/Origin at all: use it when the key is restricted by server IP instead of referrer.
+const serverHeaders = (key) => {
+  if (String(process.env.GOOGLE_MAPS_REFERER || '').toLowerCase() === 'none') return { 'X-Goog-Api-Key': key };
+  return { 'X-Goog-Api-Key': key, 'Referer': `${frontendOrigin()}/`, 'Origin': frontendOrigin() };
+};
 
 // Places API (New) - autocomplete, restricted to India.
 // opts.cities = true limits results to cities/localities (used by the website From/To boxes).
