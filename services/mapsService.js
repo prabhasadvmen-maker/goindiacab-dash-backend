@@ -75,6 +75,7 @@ export const getAutoCompleteSuggestions = async (input, opts = {}) => {
   try {
     const body = { input, includedRegionCodes: ['in'], languageCode: 'en' };
     if (opts.cities) body.includedPrimaryTypes = ['(cities)'];
+    if (opts.airports) body.includedPrimaryTypes = ['airport'];
 
     const data = await googleRequest({
       method: 'post', url: 'https://places.googleapis.com/v1/places:autocomplete', data: body, timeout: 5000,

@@ -80,8 +80,10 @@ export const suggestDestinations = async (req, res) => {
     const q = String(req.query.q || '').trim();
     if (q.length < 2) return res.json({ suggestions: [] });
 
-    const suggestions = await suggestCache.wrap(`to:${q.toLowerCase()}`, async () => {
-      const places = await getAutoCompleteSuggestions(q, { cities: false });
+    const airportsOnly = req.query.type === 'airport';
+
+    const suggestions = await suggestCache.wrap(`${airportsOnly ? 'to-airport' : 'to'}:${q.toLowerCase()}`, async () => {
+      const places = await getAutoCompleteSuggestions(q, airportsOnly ? { airports: true } : { cities: false });
       const seen = new Set();
       const out = [];
       for (const p of places) {
