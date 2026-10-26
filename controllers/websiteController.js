@@ -81,13 +81,17 @@ export const suggestDestinations = async (req, res) => {
     if (q.length < 2) return res.json({ suggestions: [] });
 
     const airportsOnly = req.query.type === 'airport';
-    // Airport trips stay inside the pickup city: only airports of that city are offered.
-    const city = airportsOnly ? String(req.query.city || '').split(',')[0].trim().toLowerCase() : '';
+    // Airport trips stay inside one city: `city` is "name" or "alias1|alias2" and results must mention one of them.
+    const cityAlts = String(req.query.city || '').toLowerCase().split('|').map((s) => s.split(',')[0].trim()).filter(Boolean);
+    const city = cityAlts[0] || '';
 
-    const suggestions = await suggestCache.wrap(`${airportsOnly ? 'to-airport' : 'to'}:${city}:${q.toLowerCase()}`, async () => {
+    const suggestions = await suggestCache.wrap(`${airportsOnly ? 'to-airport' : 'to'}:${cityAlts.join('|')}:${q.toLowerCase()}`, async () => {
       let places = await getAutoCompleteSuggestions(city ? `${q} ${city}` : q, airportsOnly ? { airports: true } : { cities: false });
       if (city) {
-        places = places.filter((p) => `${p.mainText} ${p.secondaryText} ${p.description}`.toLowerCase().includes(city));
+        places = places.filter((p) => {
+          const text = `${p.mainText} ${p.secondaryText} ${p.description}`.toLowerCase();
+          return cityAlts.some((c) => text.includes(c));
+        });
       }
       const seen = new Set();
       const out = [];
