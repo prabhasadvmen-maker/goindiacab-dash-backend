@@ -81,9 +81,14 @@ export const suggestDestinations = async (req, res) => {
     if (q.length < 2) return res.json({ suggestions: [] });
 
     const airportsOnly = req.query.type === 'airport';
+    // Airport trips stay inside the pickup city: only airports of that city are offered.
+    const city = airportsOnly ? String(req.query.city || '').split(',')[0].trim().toLowerCase() : '';
 
-    const suggestions = await suggestCache.wrap(`${airportsOnly ? 'to-airport' : 'to'}:${q.toLowerCase()}`, async () => {
-      const places = await getAutoCompleteSuggestions(q, airportsOnly ? { airports: true } : { cities: false });
+    const suggestions = await suggestCache.wrap(`${airportsOnly ? 'to-airport' : 'to'}:${city}:${q.toLowerCase()}`, async () => {
+      let places = await getAutoCompleteSuggestions(city ? `${q} ${city}` : q, airportsOnly ? { airports: true } : { cities: false });
+      if (city) {
+        places = places.filter((p) => `${p.mainText} ${p.secondaryText} ${p.description}`.toLowerCase().includes(city));
+      }
       const seen = new Set();
       const out = [];
       for (const p of places) {
