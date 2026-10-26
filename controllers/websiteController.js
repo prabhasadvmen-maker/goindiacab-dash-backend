@@ -87,6 +87,10 @@ export const suggestDestinations = async (req, res) => {
 
     const suggestions = await suggestCache.wrap(`${airportsOnly ? 'to-airport' : 'to'}:${cityAlts.join('|')}:${q.toLowerCase()}`, async () => {
       let places = await getAutoCompleteSuggestions(city ? `${q} ${city}` : q, airportsOnly ? { airports: true } : { cities: false });
+      if (airportsOnly) {
+        // Belt and braces: Google can still return nearby roads/hotels, so keep only real airports.
+        places = places.filter((p) => p.types.some((t) => t === 'airport' || t === 'international_airport'));
+      }
       if (city) {
         places = places.filter((p) => {
           const text = `${p.mainText} ${p.secondaryText} ${p.description}`.toLowerCase();

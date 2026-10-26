@@ -75,7 +75,7 @@ export const getAutoCompleteSuggestions = async (input, opts = {}) => {
   try {
     const body = { input, includedRegionCodes: ['in'], languageCode: 'en' };
     if (opts.cities) body.includedPrimaryTypes = ['(cities)'];
-    if (opts.airports) body.includedPrimaryTypes = ['airport'];
+    if (opts.airports) body.includedPrimaryTypes = ['airport', 'international_airport'];
 
     const data = await googleRequest({
       method: 'post', url: 'https://places.googleapis.com/v1/places:autocomplete', data: body, timeout: 5000,
@@ -85,6 +85,7 @@ export const getAutoCompleteSuggestions = async (input, opts = {}) => {
       .filter((s) => s.placePrediction)
       .map(({ placePrediction: p }) => ({
         placeId: p.placeId,
+        types: p.types || [],
         description: p.text?.text || '',
         mainText: p.structuredFormat?.mainText?.text || p.text?.text || '',
         secondaryText: p.structuredFormat?.secondaryText?.text || '',
