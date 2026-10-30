@@ -28,7 +28,7 @@ const pick = (obj, fields) =>
   Object.fromEntries(fields.filter((f) => obj[f] !== undefined).map((f) => [f, obj[f]]));
 
 // ───────── Cities ─────────
-const CITY_FIELDS = ['name', 'state', 'lat', 'lng', 'isPopular', 'isActive'];
+const CITY_FIELDS = ['name', 'state', 'lat', 'lng', 'isPopular', 'isActive', 'hourlyRental', 'hourlyOrder'];
 
 export const listCities = handle(async (req, res) => {
   const { search, page = 1, limit = 20 } = req.query;

@@ -15,23 +15,28 @@ export const calculateWebFare = (rule, { distanceKm, tripType = 'oneway', packag
   let includedKm = 0;
   let billableKm = 0;
   let perKmAfter = 0;
+  let includedHours = 0; // hourly rentals only
+  let perHourAfter = 0;
 
   if (tripType === 'local') {
     const pkg = rule.packages.find((p) => p.label === packageLabel) || rule.packages[0];
     if (!pkg) throw new Error('No local package configured for this vehicle');
     baseFare = pkg.price;
     includedKm = pkg.km;
+    includedHours = Number(pkg.hours) || 0;
+    perHourAfter = Number(pkg.extraHourRate) || 0;
     perKmAfter = pkg.extraKmRate;
     billableKm = Math.max(dist, pkg.km);
     extraKmFare = Math.max(0, dist - pkg.km) * pkg.extraKmRate;
   } else if (tripType === 'roundtrip') {
+    // Included km = the daily minimum (minKmPerDay x days) or the km the trip actually covers (there and back),
+    // whichever is more. Delhi -> Agra -> Delhi in one day is 454 km, so 454 km is included, not 250.
+    // The extra-km rate only applies to km driven beyond that, so no extra km fare exists at booking time.
     const travelKm = dist * 2;
-    includedKm = rule.minKmPerDay * nDays;
-    const extraRate = Number(rule.perKmRoundExtra) > 0 ? rule.perKmRoundExtra : rule.perKmRound;
-    perKmAfter = extraRate;
-    billableKm = Math.max(travelKm, includedKm);
+    includedKm = Math.max(travelKm, rule.minKmPerDay * nDays);
+    billableKm = includedKm;
+    perKmAfter = Number(rule.perKmRoundExtra) > 0 ? rule.perKmRoundExtra : rule.perKmRound;
     baseFare = includedKm * rule.perKmRound;
-    extraKmFare = Math.max(0, travelKm - includedKm) * extraRate;
     driverAllowance = rule.driverAllowancePerDay * nDays;
   } else if (tripType === 'airport') {
     // Own airport rates when configured, otherwise the one-way rates (so old vehicles keep their price).
@@ -67,6 +72,8 @@ export const calculateWebFare = (rule, { distanceKm, tripType = 'oneway', packag
     billableKm: round(billableKm),
     includedKm: round(includedKm),
     perKmAfter: round(perKmAfter),
+    includedHours: round(includedHours),
+    perHourAfter: round(perHourAfter),
   };
 };
 

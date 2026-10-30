@@ -8,6 +8,8 @@ const webCitySchema = new mongoose.Schema(
     lat: { type: Number, default: null },
     lng: { type: Number, default: null },
     isPopular: { type: Boolean, default: false },
+    hourlyRental: { type: Boolean, default: false }, // pickup city allowed for Hourly Rentals
+    hourlyOrder: { type: Number, default: 0 }, // order in the Hourly Rentals city list
     isActive: { type: Boolean, default: true },
   },
   { timestamps: true }

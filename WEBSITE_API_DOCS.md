@@ -106,7 +106,7 @@ Formulas (all values come from the fare rule in the admin panel):
 |---|---|---|---|
 | `oneway` | `max(distance, minKmOneway) × perKmOneway` | 0 | `driverAllowance` |
 | `airport` | `max(distance, airport.minKm) × airport.perKm + (pickupFee | dropFee)`; uses the one-way rates when `airport.perKm` is 0 | 0 | `airport.driverAllowance` |
-| `roundtrip` | `minKmPerDay × days × perKmRound` | `max(0, distance×2 − minKmPerDay×days) × perKmRound` | `driverAllowancePerDay × days` |
+| `roundtrip` | `max(distance×2, minKmPerDay×days) × perKmRound` (that km is the *included* km) | 0 at booking; km driven beyond the included km are billed at `perKmRoundExtra` (or `perKmRound`) after the trip | `driverAllowancePerDay × days` |
 | `local` | package `price` | `max(0, distance − package.km) × package.extraKmRate` | 0 |
 
 `gst = round((base + extra + allowance) × gstPercent / 100)`, `total = base + extra + allowance + gst`.

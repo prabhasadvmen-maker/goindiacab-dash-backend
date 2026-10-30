@@ -119,6 +119,13 @@ export const suggestDestinations = async (req, res) => {
   }
 };
 
+// Hourly rentals start only in the admin-listed cities (WebCity.hourlyRental). With no city flagged the rule is off.
+const isHourlyCity = async (name) => {
+  if (!(await WebCity.exists({ isActive: true, hourlyRental: true }))) return true;
+  const city = String(name || '').split(',')[0].trim();
+  return !!city && !!(await WebCity.exists({ isActive: true, hourlyRental: true, name: new RegExp('^' + escapeRegex(city) + '$', 'i') }));
+};
+
 // GET /api/locations/reverse?lat=28.56&lng=77.10  — "use my current location": GPS point -> street address (India only)
 export const reverseLocation = async (req, res) => {
   const lat = Number(req.query.lat);
@@ -201,11 +208,12 @@ export const getDistance = async (req, res) => {
 export const getWebConfig = async (req, res) => {
   try {
     res.json(await publicReadCache.wrap('web-config', async () => {
-      const [cities, rules, setting, addons] = await Promise.all([
+      const [cities, rules, setting, addons, hourlyCities] = await Promise.all([
         WebCity.find({ isActive: true, isPopular: true }).sort({ name: 1 }).limit(24).lean(),
         WebFareRule.find({ isActive: true }).lean(),
         Setting.findOne().lean(),
         WebAddon.find({ isActive: true }).sort({ sortOrder: 1, createdAt: 1 }).lean(),
+        WebCity.find({ isActive: true, hourlyRental: true }).sort({ hourlyOrder: 1, name: 1 }).lean(),
       ]);
 
       const pkgs = new Map();
@@ -213,6 +221,7 @@ export const getWebConfig = async (req, res) => {
 
       return {
         popularCities: cities.map((c) => ({ name: c.name, state: c.state || '' })),
+        hourlyCities: hourlyCities.map((c) => ({ name: c.name, state: c.state || '' })),
         localPackages: [...pkgs.values()].sort((a, b) => a.hours - b.hours || a.km - b.km),
         maxSeats: rules.reduce((m, r) => Math.max(m, r.seats || 0), 0),
         freeCancelMinutes: setting?.webFreeCancelMinutes ?? 60,
@@ -351,6 +360,9 @@ export const createBooking = async (req, res) => {
 
     const tripType = trip.tripType || 'oneway';
     if (tripType !== 'local' && !trip.to) return fail(res, 400, 'VALIDATION_ERROR', 'Drop city is required');
+    if (tripType === 'local' && !(await isHourlyCity(trip.from))) {
+      return fail(res, 422, 'SERVICE_NOT_AVAILABLE', 'Hourly rentals are not available in this city');
+    }
 
     // Never trust client distance/fare: re-derive on the server.
     const stop = String(trip.stop || '').trim();
