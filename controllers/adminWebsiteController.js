@@ -3,6 +3,10 @@ import WebRoute from '../models/WebRoute.js';
 import WebFareRule from '../models/WebFareRule.js';
 import WebBooking from '../models/WebBooking.js';
 import WebAddon from '../models/WebAddon.js';
+import Setting from '../models/Setting.js';
+import { invalidatePublicCaches } from '../services/webCache.js';
+import { getTripTypeMeta } from '../services/webMeta.js';
+import { TRIP_TYPES } from '../services/webFareService.js';
 import { uploadBase64ToR2, getPresignedUrl } from '../services/r2Service.js';
 import { sendStatusUpdate } from '../services/webNotifyService.js';
 
@@ -14,6 +18,7 @@ const forbid = (res) => res.status(403).json({ success: false, message: 'Not aut
 const handle = (fn) => async (req, res) => {
   try {
     await fn(req, res);
+    if (req.method !== 'GET') invalidatePublicCaches();
   } catch (err) {
     if (err.code === 11000) return res.status(409).json({ success: false, message: 'Already exists' });
     if (err.name === 'ValidationError' || err.name === 'CastError') {
@@ -30,24 +35,48 @@ const pick = (obj, fields) =>
 // ───────── Cities ─────────
 const CITY_FIELDS = ['name', 'state', 'lat', 'lng', 'isPopular', 'isActive', 'hourlyRental', 'hourlyOrder'];
 
+const cleanCity = (body) => {
+  const out = pick(body, CITY_FIELDS);
+  if (out.name !== undefined) out.name = String(out.name).trim();
+  if (out.state !== undefined) out.state = String(out.state).trim();
+  if (out.hourlyOrder !== undefined) out.hourlyOrder = Math.max(0, Math.floor(Number(out.hourlyOrder) || 0));
+  return out;
+};
+
 export const listCities = handle(async (req, res) => {
-  const { search, page = 1, limit = 20 } = req.query;
-  const filter = search ? { name: new RegExp(escapeRegex(String(search)), 'i') } : {};
-  const total = await WebCity.countDocuments(filter);
-  const data = await WebCity.find(filter).sort({ isPopular: -1, name: 1 })
-    .skip((page - 1) * limit).limit(Number(limit));
-  res.json({ success: true, data, total, page: Number(page), pages: Math.ceil(total / limit) || 1 });
+  const page = Math.max(1, Math.floor(Number(req.query.page)) || 1);
+  const limit = Math.min(100, Math.max(1, Math.floor(Number(req.query.limit)) || 25));
+  const { search, filter } = req.query;
+  const query = {};
+  if (search) query.name = new RegExp(escapeRegex(String(search)), 'i');
+  if (filter === 'hourly') query.hourlyRental = true;
+  if (filter === 'popular') query.isPopular = true;
+  if (filter === 'inactive') query.isActive = false;
+
+  const [total, data, all, active, popular, hourly] = await Promise.all([
+    WebCity.countDocuments(query),
+    WebCity.find(query).sort(filter === 'hourly' ? { hourlyOrder: 1, name: 1 } : { name: 1 }).skip((page - 1) * limit).limit(limit).lean(),
+    WebCity.countDocuments(),
+    WebCity.countDocuments({ isActive: true }),
+    WebCity.countDocuments({ isPopular: true }),
+    WebCity.countDocuments({ hourlyRental: true }),
+  ]);
+  res.json({ success: true, data, total, page, pages: Math.ceil(total / limit) || 1, counts: { total: all, active, popular, hourly } });
 });
 
 export const createCity = handle(async (req, res) => {
   if (!isSuper(req)) return forbid(res);
-  const data = await WebCity.create(pick(req.body, CITY_FIELDS));
+  const body = cleanCity(req.body);
+  if (!body.name) return res.status(400).json({ success: false, message: 'City name is required' });
+  const data = await WebCity.create(body);
   res.status(201).json({ success: true, data });
 });
 
 export const updateCity = handle(async (req, res) => {
   if (!isSuper(req)) return forbid(res);
-  const data = await WebCity.findByIdAndUpdate(req.params.id, pick(req.body, CITY_FIELDS), { returnDocument: 'after', runValidators: true });
+  const body = cleanCity(req.body);
+  if (body.name === '') return res.status(400).json({ success: false, message: 'City name is required' });
+  const data = await WebCity.findByIdAndUpdate(req.params.id, body, { returnDocument: 'after', runValidators: true });
   if (!data) return res.status(404).json({ success: false, message: 'City not found' });
   res.json({ success: true, data });
 });
@@ -146,6 +175,41 @@ export const deleteFareRule = handle(async (req, res) => {
   const data = await WebFareRule.findByIdAndDelete(req.params.id);
   if (!data) return res.status(404).json({ success: false, message: 'Fare rule not found' });
   res.json({ success: true, message: 'Fare rule deleted' });
+});
+
+// ───────── Inclusions / exclusions (policies) ─────────
+const POLICY_KINDS = ['included', 'excluded'];
+
+const toPolicy = (p) => ({ kind: p.kind, text: p.text || p.title || '', tripTypes: p.tripTypes || [] });
+
+export const getPolicies = handle(async (req, res) => {
+  const setting = await Setting.findOne().lean();
+  res.json({ success: true, data: (setting?.webPolicies || []).map(toPolicy) });
+});
+
+// Replaces the whole list; the order given is the order customers see.
+export const savePolicies = handle(async (req, res) => {
+  if (!isSuper(req)) return forbid(res);
+  const input = req.body?.policies;
+  if (!Array.isArray(input) || input.length > 60) {
+    return res.status(400).json({ success: false, message: 'policies must be a list of at most 60 items' });
+  }
+  const clean = [];
+  for (const [i, p] of input.entries()) {
+    const text = String(p?.text || '').trim();
+    if (!text || text.length > 200) return res.status(400).json({ success: false, message: `Item ${i + 1}: text is required (max 200 characters)` });
+    if (!POLICY_KINDS.includes(p?.kind)) return res.status(400).json({ success: false, message: `Item ${i + 1}: kind must be included or excluded` });
+    const tripTypes = [...new Set(Array.isArray(p?.tripTypes) ? p.tripTypes : [])];
+    if (tripTypes.some((t) => !TRIP_TYPES.includes(t))) return res.status(400).json({ success: false, message: `Item ${i + 1}: unknown trip type` });
+    clean.push({ kind: p.kind, title: text.slice(0, 80), text, tripTypes });
+  }
+  await Setting.findOneAndUpdate({}, { $set: { webPolicies: clean } }, { upsert: true, setDefaultsOnInsert: true });
+  res.json({ success: true, data: clean.map(toPolicy) });
+});
+
+// Names of the trip types, so admin screens do not hard-code them.
+export const getWebMeta = handle(async (req, res) => {
+  res.json({ success: true, data: { tripTypes: getTripTypeMeta() } });
 });
 
 // ───────── Journey add-ons (checkout extras) ─────────

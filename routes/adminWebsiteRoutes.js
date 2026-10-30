@@ -6,6 +6,7 @@ import {
   listRoutes, createRoute, updateRoute, deleteRoute,
   listFareRules, createFareRule, updateFareRule, deleteFareRule,
   listAddons, createAddon, updateAddon, deleteAddon,
+  getPolicies, savePolicies, getWebMeta,
   listWebBookings, getWebBooking, updateWebBookingStatus,
   getWebsiteStats, seedWebsiteDefaults,
 } from '../controllers/adminWebsiteController.js';
@@ -25,6 +26,9 @@ router.route('/routes/:id').put(updateRoute).delete(deleteRoute);
 
 router.route('/fare-rules').get(listFareRules).post(createFareRule);
 router.route('/fare-rules/:id').put(updateFareRule).delete(deleteFareRule);
+
+router.get('/meta', getWebMeta);
+router.route('/policies').get(getPolicies).put(savePolicies);
 
 router.route('/addons').get(listAddons).post(createAddon);
 router.route('/addons/:id').put(updateAddon).delete(deleteAddon);

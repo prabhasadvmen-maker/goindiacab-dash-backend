@@ -21,8 +21,8 @@ router.get('/locations/suggest', limiter(120), publicCache(300), suggestLocation
 router.get('/locations/suggest-destination', limiter(120), publicCache(300), suggestDestinations);
 router.get('/locations/reverse', limiter(20), reverseLocation);
 router.get('/distance', limiter(60), publicCache(300), getDistance);
-router.get('/fare/vehicles', limiter(60), publicCache(60), listVehicleTypes);
-router.get('/web-config', limiter(60), publicCache(60), getWebConfig);
+router.get('/fare/vehicles', limiter(60), publicCache(30, 0), listVehicleTypes);
+router.get('/web-config', limiter(60), publicCache(30, 0), getWebConfig);
 router.get('/coupons/available', limiter(60), listCouponsApi);
 router.post('/coupons/validate', limiter(30), validateCouponApi);
 router.post('/fare/calculate', limiter(120), calculateFareApi);

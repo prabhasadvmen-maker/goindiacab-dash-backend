@@ -43,8 +43,8 @@ export const createTtlCache = ({ ttlMs, maxEntries = 500 }) => {
 
 // Express middleware: lets browsers / CDNs reuse a public GET response for `seconds`.
 // Error responses are never cacheable.
-export const publicCache = (seconds) => (req, res, next) => {
-  res.set('Cache-Control', `public, max-age=${seconds}, stale-while-revalidate=${seconds * 5}`);
+export const publicCache = (seconds, staleSeconds = seconds * 5) => (req, res, next) => {
+  res.set('Cache-Control', `public, max-age=${seconds}${staleSeconds > 0 ? `, stale-while-revalidate=${staleSeconds}` : ''}`);
   const json = res.json.bind(res);
   res.json = (body) => {
     if (res.statusCode >= 400) res.set('Cache-Control', 'no-store');

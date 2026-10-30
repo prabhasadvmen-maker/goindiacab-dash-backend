@@ -14,6 +14,7 @@ import { applyCoupon, listPublicCoupons, normalizeCode } from '../services/webCo
 import WebCoupon from '../models/WebCoupon.js';
 import { getPresignedUrl } from '../services/r2Service.js';
 import { createTtlCache } from '../services/ttlCache.js';
+import { publicReadCache } from '../services/webCache.js';
 
 const escapeRegex = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 // "Railway Rd, Colony, Varanasi, Uttar Pradesh, India" -> "Varanasi, Uttar Pradesh" (keeps labels short but unambiguous)
@@ -21,8 +22,7 @@ const shortRegion = (secondary) =>
   String(secondary || '').replace(/,?\s*India$/i, '').split(',').map((x) => x.trim()).filter(Boolean).slice(-2).join(', ');
 const fail = (res, status, error, message) => res.status(status).json({ success: false, error, message });
 
-// Short-lived caches for public reads that rarely change (admin edits show up within a minute).
-const publicReadCache = createTtlCache({ ttlMs: 60 * 1000, maxEntries: 20 });
+// publicReadCache (web config, vehicles) lives in services/webCache.js so admin writes can clear it.
 // Place suggestions per typed query: Google Places is the slowest call on the site and is hit on every keystroke.
 const suggestCache = createTtlCache({ ttlMs: 10 * 60 * 1000, maxEntries: 1500 });
 
