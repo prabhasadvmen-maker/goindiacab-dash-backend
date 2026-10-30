@@ -143,6 +143,7 @@ const layout = ({ preheader, badge, badgeColor, title, subtitle, body }) => `<!D
 
 const receiptHtml = (booking) => {
   const { fare, payment, passenger } = booking;
+  const cash = fare.paymentOption === 'cash'; // whole fare is paid to the driver, nothing was paid online
   const addons = (fare.addons || []).filter((a) => a && Number(a.price) > 0);
   const subtotal = Number(fare.total || 0) + Number(fare.discount || 0);
 
@@ -162,14 +163,18 @@ const receiptHtml = (booking) => {
         <tr><td style="padding:14px 18px;">
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
             ${kv('Total fare', inr(fare.total), { bold: true })}
-            ${kv('Paid online', inr(payment.paidAmount || fare.paidNow), { bold: true, color: '#16A34A' })}
-            ${fare.payLater > 0 ? kv('Balance to pay to driver', inr(fare.payLater), { bold: true, color: ORANGE }) : kv('Balance due', inr(0), { bold: true })}
+            ${cash ? '' : kv('Paid online', inr(payment.paidAmount || fare.paidNow), { bold: true, color: '#16A34A' })}
+            ${fare.payLater > 0 ? kv(cash ? 'To pay to the driver' : 'Balance to pay to driver', inr(fare.payLater), { bold: true, color: ORANGE }) : kv('Balance due', inr(0), { bold: true })}
           </table>
         </td></tr>
       </table>
     </td></tr>`;
 
-  const paymentRows = [
+  const paymentRows = cash ? [
+    kv('Status', '<span style="color:#D97706;">Pay to driver</span>'),
+    kv('Method', 'Cash / UPI to the driver after the ride'),
+    kv('Payment option', 'Pay to driver'),
+  ].join('') : [
     kv('Status', '<span style="color:#16A34A;">Paid</span>'),
     payment.paidAt ? kv('Paid on', esc(fmtStamp(payment.paidAt))) : '',
     payment.paymentId ? kv('Payment ID', esc(payment.paymentId)) : '',
@@ -187,11 +192,15 @@ const receiptHtml = (booking) => {
     ${button(bookingUrl(booking), 'View Booking')}`;
 
   return layout({
-    preheader: `Payment of ${inr(payment.paidAmount || fare.paidNow)} received. Booking ${booking.bookingId} is confirmed.`,
-    badge: 'Receipt',
-    badgeColor: '#16A34A',
+    preheader: cash
+      ? `Booking ${booking.bookingId} is confirmed. Please pay ${inr(fare.payLater)} to the driver.`
+      : `Payment of ${inr(payment.paidAmount || fare.paidNow)} received. Booking ${booking.bookingId} is confirmed.`,
+    badge: cash ? 'Booking confirmed' : 'Receipt',
+    badgeColor: cash ? '#D97706' : '#16A34A',
     title: `Booking confirmed, ${esc(passenger.name)}!`,
-    subtitle: `We have received your payment and your cab is booked. Here is your receipt for <b style="color:${INK};">${route(booking.trip)}</b>.`,
+    subtitle: cash
+      ? `Your cab is booked. Please pay <b style="color:${INK};">${inr(fare.payLater)}</b> to the driver for <b style="color:${INK};">${route(booking.trip)}</b>.`
+      : `We have received your payment and your cab is booked. Here is your receipt for <b style="color:${INK};">${route(booking.trip)}</b>.`,
     body,
   });
 };
@@ -280,7 +289,9 @@ export const sendBookingConfirmation = async (booking) => {
   result.emailSent = await sendMail({
     to: booking.passenger.email,
     name: booking.passenger.name,
-    subject: `Booking confirmed & payment receipt - ${booking.bookingId}`,
+    subject: booking.fare.paymentOption === 'cash'
+      ? `Booking confirmed - pay ${inr(booking.fare.payLater)} to the driver - ${booking.bookingId}`
+      : `Booking confirmed & payment receipt - ${booking.bookingId}`,
     html: receiptHtml(booking),
   });
   return result;

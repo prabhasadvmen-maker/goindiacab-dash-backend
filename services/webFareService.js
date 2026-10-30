@@ -80,6 +80,7 @@ export const calculateWebFare = (rule, { distanceKm, tripType = 'oneway', packag
 // Split total into pay-now / pay-later for the chosen payment option.
 export const splitPayment = (total, paymentOption, partPercent) => {
   if (paymentOption === 'full') return { paidNow: total, payLater: 0 };
+  if (paymentOption === 'cash') return { paidNow: 0, payLater: total }; // nothing online: the driver collects the full fare
   const paidNow = Math.round((total * partPercent) / 100);
   return { paidNow, payLater: total - paidNow };
 };

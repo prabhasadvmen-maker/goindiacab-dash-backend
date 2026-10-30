@@ -49,10 +49,20 @@ const settingSchema = new mongoose.Schema({
   },
   webPartPaymentPercent: {
     type: Number,
-    default: 25, // % payable online at booking time on the public website
+    default: 15, // % payable online at booking time on the public website
     min: 1,
     max: 100,
-  }
+  },
+  webCashToDriverEnabled: {
+    type: Boolean,
+    default: true, // customers may book now and pay the whole fare to the driver
+  },
+  webCashMaxOpenBookings: {
+    type: Number,
+    default: 3, // pay-to-driver bookings one mobile number may have open at the same time
+    min: 1,
+    max: 20,
+  },
 }, { timestamps: true });
 
 const Setting = mongoose.model('Setting', settingSchema);

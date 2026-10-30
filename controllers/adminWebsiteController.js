@@ -207,6 +207,38 @@ export const savePolicies = handle(async (req, res) => {
   res.json({ success: true, data: clean.map(toPolicy) });
 });
 
+// ───────── Payment & cancellation settings (what customers see at checkout) ─────────
+const toPaymentSettings = (s) => ({
+  partPaymentPercent: s?.webPartPaymentPercent ?? 15,
+  freeCancelMinutes: s?.webFreeCancelMinutes ?? 60,
+  cashToDriverEnabled: s?.webCashToDriverEnabled !== false,
+  cashMaxOpenBookings: s?.webCashMaxOpenBookings ?? 3,
+});
+
+export const getPaymentSettings = handle(async (req, res) => {
+  res.json({ success: true, data: toPaymentSettings(await Setting.findOne().lean()) });
+});
+
+const intInRange = (v, min, max) => Number.isInteger(v) && v >= min && v <= max;
+
+export const savePaymentSettings = handle(async (req, res) => {
+  if (!isSuper(req)) return forbid(res);
+  const { partPaymentPercent, freeCancelMinutes, cashToDriverEnabled, cashMaxOpenBookings } = req.body || {};
+  const problems = [];
+  if (!intInRange(partPaymentPercent, 1, 100)) problems.push('Part payment must be a whole number from 1 to 100');
+  if (!intInRange(freeCancelMinutes, 0, 10080)) problems.push('Free cancellation window must be 0 to 10080 minutes (7 days)');
+  if (typeof cashToDriverEnabled !== 'boolean') problems.push('Pay to driver must be on or off');
+  if (!intInRange(cashMaxOpenBookings, 1, 20)) problems.push('Open pay-to-driver bookings per mobile must be 1 to 20');
+  if (problems.length) return res.status(400).json({ success: false, message: problems.join('. ') });
+
+  const saved = await Setting.findOneAndUpdate(
+    {},
+    { $set: { webPartPaymentPercent: partPaymentPercent, webFreeCancelMinutes: freeCancelMinutes, webCashToDriverEnabled: cashToDriverEnabled, webCashMaxOpenBookings: cashMaxOpenBookings } },
+    { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true }
+  ).lean();
+  res.json({ success: true, data: toPaymentSettings(saved) });
+});
+
 // Names of the trip types, so admin screens do not hard-code them.
 export const getWebMeta = handle(async (req, res) => {
   res.json({ success: true, data: { tripTypes: getTripTypeMeta() } });

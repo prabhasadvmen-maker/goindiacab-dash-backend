@@ -45,7 +45,7 @@ const webBookingSchema = new mongoose.Schema(
       discount: { type: Number, default: 0 },
       couponCode: { type: String, default: '', index: true },
       total: { type: Number, required: true },
-      paymentOption: { type: String, enum: ['full', 'part'], default: 'part' },
+      paymentOption: { type: String, enum: ['full', 'part', 'cash'], default: 'part' }, // cash = the whole fare is paid to the driver
       paidNow: { type: Number, default: 0 }, // amount payable now
       payLater: { type: Number, default: 0 },
     },

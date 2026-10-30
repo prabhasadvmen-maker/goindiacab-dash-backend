@@ -28,7 +28,7 @@ const suggestCache = createTtlCache({ ttlMs: 10 * 60 * 1000, maxEntries: 1500 })
 
 const getPartPercent = async () => {
   const s = await Setting.findOne().lean();
-  return s?.webPartPaymentPercent || 25;
+  return s?.webPartPaymentPercent || 15;
 };
 
 const newBookingId = () => {
@@ -65,6 +65,7 @@ const publicBooking = (b) => ({
     total: b.fare.total,
     paidNow: b.fare.paidNow,
     payLater: b.fare.payLater,
+    paymentOption: b.fare.paymentOption,
   },
   paymentStatus: b.payment.status,
   bookedAt: b.createdAt,
@@ -226,7 +227,8 @@ export const getWebConfig = async (req, res) => {
         maxSeats: rules.reduce((m, r) => Math.max(m, r.seats || 0), 0),
         freeCancelMinutes: setting?.webFreeCancelMinutes ?? 60,
         policies: (setting?.webPolicies || []).map((p) => ({ kind: p.kind, title: p.title, text: p.text, tripTypes: p.tripTypes || [] })),
-        partPaymentPercent: setting?.webPartPaymentPercent ?? 25,
+        partPaymentPercent: setting?.webPartPaymentPercent ?? 15,
+        cashToDriverEnabled: setting?.webCashToDriverEnabled !== false,
         addons: addons.map((a) => ({ code: a.code, title: a.title, price: a.price, unit: a.unit, badge: a.badge || '', tripTypes: a.tripTypes || [] })),
       };
     }));
@@ -398,7 +400,22 @@ export const createBooking = async (req, res) => {
     });
     if (duplicate) return fail(res, 409, 'DUPLICATE_BOOKING', 'A booking already exists for this trip');
 
-    const paymentOption = clientFare.paymentOption === 'full' ? 'full' : 'part';
+    const paymentOption = ['full', 'cash'].includes(clientFare.paymentOption) ? clientFare.paymentOption : 'part';
+    if (paymentOption === 'cash') {
+      // Pay-to-driver: only when enabled, and with a cap per mobile number so unpaid bookings cannot be spammed.
+      const setting = await Setting.findOne().lean();
+      if (setting?.webCashToDriverEnabled === false) {
+        return fail(res, 400, 'CASH_NOT_AVAILABLE', 'Pay to driver is not available right now. Please pay online.');
+      }
+      const maxOpen = setting?.webCashMaxOpenBookings || 3;
+      const open = await WebBooking.countDocuments({
+        'passenger.mobile': mobile, 'fare.paymentOption': 'cash',
+        status: { $in: ['confirmed', 'assigned', 'in_progress'] }, 'trip.date': { $gte: todayIST() },
+      });
+      if (open >= maxOpen) {
+        return fail(res, 429, 'TOO_MANY_CASH_BOOKINGS', `You already have ${open} upcoming pay-to-driver bookings. Please pay online for this one.`);
+      }
+    }
     const f = computed.fare;
 
     // Coupon: re-validated here, the client's discount is never trusted.
@@ -444,6 +461,14 @@ export const createBooking = async (req, res) => {
       },
     });
 
+    if (paymentOption === 'cash') {
+      // Nothing to pay online, so the booking is final now: count the coupon and send the confirmation email.
+      if (couponCode) WebCoupon.updateOne({ code: couponCode }, { $inc: { usedCount: 1 } }).catch(() => {});
+      sendBookingConfirmation(booking)
+        .then(async (r) => { booking.notification = r; await booking.save(); })
+        .catch(() => {});
+    }
+
     res.status(201).json({
       success: true,
       bookingId: booking.bookingId,
@@ -483,6 +508,7 @@ export const createPaymentOrder = async (req, res) => {
     if (!booking) return fail(res, 404, 'BOOKING_NOT_FOUND', 'Booking not found');
     if (booking.status === 'cancelled') return fail(res, 409, 'BOOKING_CANCELLED', 'Booking is cancelled');
     if (booking.payment.status === 'paid') return fail(res, 409, 'ALREADY_PAID', 'Booking is already paid');
+    if (booking.fare.paymentOption === 'cash') return fail(res, 409, 'PAY_TO_DRIVER', 'This booking is paid to the driver, no online payment is needed');
 
     // Guard: Razorpay requires a minimum positive amount (in paise)
     const amountPaise = Math.round((booking.fare.paidNow || 0) * 100);
