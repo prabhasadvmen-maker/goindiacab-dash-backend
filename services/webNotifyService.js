@@ -111,6 +111,17 @@ const supportLine = () => {
   return bits.length ? `Need help? Contact us at ${bits.join(' &nbsp;|&nbsp; ')}` : '';
 };
 
+// Logo shown at the top of every email. Mail clients need a public https URL, so it is the one the website already serves.
+const siteBase = () => String(process.env.WEBSITE_URL || '').split(',')[0].trim().replace(/\/+$/, '');
+const logoUrl = () => process.env.EMAIL_LOGO_URL || (siteBase() ? `${siteBase()}/goindiacab-logo-wide.png` : '');
+
+const logoCell = () => {
+  const url = logoUrl();
+  return url
+    ? `<a href="${esc(siteBase() || url)}" style="text-decoration:none;"><img src="${esc(url)}" alt="${esc(brand())}" width="150" style="display:block;border:0;width:150px;max-width:150px;height:auto;background:#ffffff;border-radius:8px;padding:6px 8px;" /></a>`
+    : `<span style="font-size:22px;font-weight:800;color:#ffffff;letter-spacing:.3px;">${esc(brand())}</span>`;
+};
+
 const layout = ({ preheader, badge, badgeColor, title, subtitle, body }) => `<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)}</title></head>
 <body style="margin:0;padding:0;background:#EEF2F7;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:${INK};">
@@ -120,7 +131,7 @@ const layout = ({ preheader, badge, badgeColor, title, subtitle, body }) => `<!D
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid ${LINE};">
     <tr><td style="background:${NAVY};padding:22px 28px;">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
-        <td style="font-size:22px;font-weight:800;color:#ffffff;letter-spacing:.3px;">${esc(brand())}</td>
+        <td>${logoCell()}</td>
         <td align="right"><span style="display:inline-block;background:${badgeColor};color:#ffffff;font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;padding:5px 12px;border-radius:999px;">${esc(badge)}</span></td>
       </tr></table>
     </td></tr>

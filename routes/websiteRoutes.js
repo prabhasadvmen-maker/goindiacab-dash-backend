@@ -2,7 +2,7 @@ import express from 'express';
 import rateLimit from 'express-rate-limit';
 import {
   suggestLocations, suggestDestinations, reverseLocation, getDistance, listVehicleTypes, getWebConfig, validateCouponApi, listCouponsApi, calculateFareApi,
-  createBooking, getBooking, createPaymentOrder, verifyPayment, notifyBookingConfirmed,
+  createBooking, getBooking, downloadReceipt, createPaymentOrder, verifyPayment, notifyBookingConfirmed,
 } from '../controllers/websiteController.js';
 
 import { publicCache } from '../services/ttlCache.js';
@@ -28,6 +28,7 @@ router.post('/coupons/validate', limiter(30), validateCouponApi);
 router.post('/fare/calculate', limiter(120), calculateFareApi);
 router.post('/booking/create', limiter(10), createBooking);
 router.get('/booking/:bookingId', limiter(60), getBooking);
+router.get('/booking/:bookingId/receipt', limiter(30), downloadReceipt);
 router.post('/payment/create-order', limiter(10), createPaymentOrder);
 router.post('/payment/verify', limiter(20), verifyPayment);
 router.post('/notify/booking-confirmed', limiter(10), notifyBookingConfirmed);

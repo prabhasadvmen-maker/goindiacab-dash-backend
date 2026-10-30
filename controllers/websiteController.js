@@ -15,6 +15,7 @@ import WebCoupon from '../models/WebCoupon.js';
 import { getPresignedUrl } from '../services/r2Service.js';
 import { createTtlCache } from '../services/ttlCache.js';
 import { publicReadCache } from '../services/webCache.js';
+import { buildReceiptPdf, receiptFileName } from '../services/receiptPdf.js';
 
 const escapeRegex = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 // "Railway Rd, Colony, Varanasi, Uttar Pradesh, India" -> "Varanasi, Uttar Pradesh" (keeps labels short but unambiguous)
@@ -491,6 +492,29 @@ export const getBooking = async (req, res) => {
     res.json(publicBooking(booking));
   } catch (err) {
     fail(res, 500, 'SERVER_ERROR', 'Could not fetch booking');
+  }
+};
+
+// GET /api/booking/:bookingId/receipt - the receipt as a PDF download. Like getBooking, the booking ID is the credential.
+export const downloadReceipt = async (req, res) => {
+  try {
+    const booking = await WebBooking.findOne({ bookingId: String(req.params.bookingId).toUpperCase() });
+    if (!booking) return fail(res, 404, 'BOOKING_NOT_FOUND', 'Booking not found');
+    const pdf = buildReceiptPdf(booking, {
+      brand: process.env.APP_NAME || 'GoIndiaCab',
+      supportPhone: process.env.SUPPORT_PHONE || '',
+      supportEmail: process.env.SUPPORT_EMAIL || process.env.BREVO_FROM_EMAIL || '',
+    });
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="${receiptFileName(booking)}"`,
+      'Content-Length': pdf.length,
+      'Cache-Control': 'no-store', // personal details: never cached by browsers or proxies
+    });
+    res.end(pdf);
+  } catch (err) {
+    console.error('downloadReceipt:', err);
+    fail(res, 500, 'SERVER_ERROR', 'Could not create the receipt');
   }
 };
 
