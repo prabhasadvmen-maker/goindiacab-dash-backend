@@ -82,7 +82,8 @@ Active vehicles to render the cab cards.
 |---|---|
 | `vehicleType` | vehicle `id` from 3a |
 | `distanceKm` | one-way route distance from API 2 (0–6000) |
-| `tripType` | `oneway` (default), `roundtrip`, `local` |
+| `tripType` | `oneway` (default), `roundtrip`, `local`, `airport` |
+| `airportDir` | Required when `tripType` is `airport`: `from` = pickup from the airport, `to` = drop to the airport |
 | `package` | required label for `local` (first package used if omitted/unknown) |
 | `days` | `roundtrip` only, default 1 |
 
@@ -104,6 +105,7 @@ Formulas (all values come from the fare rule in the admin panel):
 | Trip | Base fare | Extra km fare | Driver allowance |
 |---|---|---|---|
 | `oneway` | `max(distance, minKmOneway) × perKmOneway` | 0 | `driverAllowance` |
+| `airport` | `max(distance, airport.minKm) × airport.perKm + (pickupFee | dropFee)`; uses the one-way rates when `airport.perKm` is 0 | 0 | `airport.driverAllowance` |
 | `roundtrip` | `minKmPerDay × days × perKmRound` | `max(0, distance×2 − minKmPerDay×days) × perKmRound` | `driverAllowancePerDay × days` |
 | `local` | package `price` | `max(0, distance − package.km) × package.extraKmRate` | 0 |
 
@@ -123,7 +125,7 @@ Body exactly as in the website spec (`passenger`, `trip`, `vehicle`, `fare`). Ex
 }
 ```
 
-**Server-side rules (anti-tampering):** distance is re-resolved from `trip.from/to`; the fare is recomputed from the fare rule; the client's `fare.total/paidNow/payLater` are **ignored** — only `fare.paymentOption` (`part` default | `full`) is used. Mobile must be a valid 10-digit Indian number, date `YYYY-MM-DD` not in the past (IST), time `HH:mm`, `to` required unless `tripType` is `local`.
+**Server-side rules (anti-tampering):** distance is re-resolved from `trip.from/to`; the fare is recomputed from the fare rule; the client's `fare.total/paidNow/payLater` are **ignored** — only `fare.paymentOption` (`part` default | `full`) is used. Optional `fare.addons` is a list of add-on **codes** (from `GET /api/web-config` → `addons`); the server prices them (`flat` = price, `perKm` = price × billable km), rejects unknown/inactive/not-offered codes, and adds the total on top of the discounted fare (coupons discount the fare only). Mobile must be a valid 10-digit Indian number, date `YYYY-MM-DD` not in the past (IST), time `HH:mm`, `to` required unless `tripType` is `local`.
 
 Success `201`:
 ```json

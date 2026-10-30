@@ -32,7 +32,7 @@ const fmtPickup = (date, time) => {
   return d.toLocaleString('en-IN', { ...IST, weekday: 'short', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true });
 };
 
-const TRIP_LABEL = { oneway: 'One-way Trip', roundtrip: 'Round Trip', local: 'Local Rental' };
+const TRIP_LABEL = { oneway: 'One-way Trip', roundtrip: 'Round Trip', local: 'Local Rental', airport: 'Airport Transfer' };
 
 const STATUS_COPY = {
   confirmed: { label: 'Confirmed', color: '#2563EB', title: 'Your booking is confirmed', text: 'We have confirmed your booking. Driver details will be shared with you before pickup.' },
@@ -64,7 +64,9 @@ const route = (trip) => {
 const tripRows = (booking) => {
   const { trip, vehicle } = booking;
   const rows = [
-    kv('Trip type', esc(TRIP_LABEL[trip.tripType] || trip.tripType)),
+    kv('Trip type', esc(trip.tripType === 'airport' && trip.airportDir
+      ? `Airport ${trip.airportDir === 'from' ? 'Pickup' : 'Drop'}`
+      : TRIP_LABEL[trip.tripType] || trip.tripType)),
     kv('Pickup', esc(trip.from)),
   ];
   if (trip.stop) rows.push(kv('Stop', esc(trip.stop)));

@@ -34,7 +34,7 @@ const settingSchema = new mongoose.Schema({
     default: true,
   },
   webPolicies: {
-    type: [{ title: String, text: String, kind: { type: String, enum: ['included', 'excluded'], default: 'included' }, _id: false }],
+    type: [{ title: String, text: String, kind: { type: String, enum: ['included', 'excluded'], default: 'included' }, tripTypes: { type: [String], default: [] }, _id: false }], // tripTypes empty = shown for every trip type
     default: () => [
       { kind: 'included', title: 'Toll, tax and other charges', text: 'Toll, State Tax and Parking charges are included' },
       { kind: 'included', title: 'Driver allowance', text: 'Driver food and accommodation (stay) charges are included' },

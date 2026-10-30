@@ -2,11 +2,13 @@ import crypto from 'crypto';
 import Razorpay from 'razorpay';
 import WebCity from '../models/WebCity.js';
 import WebFareRule from '../models/WebFareRule.js';
+import WebAddon from '../models/WebAddon.js';
+import { resolveAddons } from '../services/webAddonService.js';
 import WebBooking from '../models/WebBooking.js';
 import Setting from '../models/Setting.js';
 import { resolveDistance } from '../services/webDistanceService.js';
-import { getAutoCompleteSuggestions } from '../services/mapsService.js';
-import { calculateWebFare, splitPayment, TRIP_TYPES } from '../services/webFareService.js';
+import { getAutoCompleteSuggestions, reverseGeocode } from '../services/mapsService.js';
+import { calculateWebFare, splitPayment, TRIP_TYPES, AIRPORT_DIRS } from '../services/webFareService.js';
 import { sendBookingConfirmation } from '../services/webNotifyService.js';
 import { applyCoupon, listPublicCoupons, normalizeCode } from '../services/webCouponService.js';
 import WebCoupon from '../models/WebCoupon.js';
@@ -49,7 +51,7 @@ const publicBooking = (b) => ({
   },
   trip: {
     from: b.trip.from, to: b.trip.to, stop: b.trip.stop, date: b.trip.date, time: b.trip.time,
-    tripType: b.trip.tripType, distanceKm: b.trip.distanceKm,
+    tripType: b.trip.tripType, airportDir: b.trip.airportDir || '', distanceKm: b.trip.distanceKm,
   },
   vehicle: { name: b.vehicle.name, model: b.vehicle.model },
   fare: {
@@ -59,6 +61,7 @@ const publicBooking = (b) => ({
     gst: b.fare.gst,
     discount: b.fare.discount,
     couponCode: b.fare.couponCode,
+    addons: (b.fare.addons || []).map((a) => ({ label: a.label, price: a.price })),
     total: b.fare.total,
     paidNow: b.fare.paidNow,
     payLater: b.fare.payLater,
@@ -116,6 +119,21 @@ export const suggestDestinations = async (req, res) => {
   }
 };
 
+// GET /api/locations/reverse?lat=28.56&lng=77.10  — "use my current location": GPS point -> street address (India only)
+export const reverseLocation = async (req, res) => {
+  const lat = Number(req.query.lat);
+  const lng = Number(req.query.lng);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || lat < 6 || lat > 38 || lng < 67 || lng > 98) {
+    return fail(res, 400, 'VALIDATION_ERROR', 'A valid location in India is required');
+  }
+  try {
+    res.set('Cache-Control', 'no-store'); // a customer's position is never cached
+    res.json(await reverseGeocode(lat, lng));
+  } catch (err) {
+    fail(res, 422, 'LOCATION_UNAVAILABLE', 'Could not find an address for your location');
+  }
+};
+
 // GET /api/locations/suggest?q=del  — FROM field: admin-managed cities only (limited list)
 export const suggestLocations = async (req, res) => {
   try {
@@ -130,6 +148,21 @@ export const suggestLocations = async (req, res) => {
         .lean();
       const list = cities.map((c) => ({ label: c.state ? `${c.name}, ${c.state}` : c.name, value: c.name }));
 
+      // Pickup can be anywhere: admin cities first, then any place from Google Places.
+      const seen = new Set(list.map((s) => s.label.toLowerCase()));
+      try {
+        const places = await getAutoCompleteSuggestions(q, { cities: false });
+        for (const p of places) {
+          const state = shortRegion(p.secondaryText);
+          const label = state ? `${p.mainText}, ${state}` : p.mainText;
+          if (seen.has(label.toLowerCase())) continue;
+          seen.add(label.toLowerCase());
+          list.push({ label, value: label });
+        }
+      } catch (e) {
+        console.error('suggestLocations places:', e.message);
+      }
+
       return list;
     });
 
@@ -138,13 +171,6 @@ export const suggestLocations = async (req, res) => {
     console.error('suggestLocations:', err);
     res.json({ suggestions: [] });
   }
-};
-
-// Pickup is limited to the admin-managed cities (the FROM suggestions); anything else is outside the service area.
-const isServiceableCity = async (name) => {
-  const city = String(name || '').split(',')[0].replace(/\s*\/\s*NCR/i, '').trim();
-  if (!city) return false;
-  return !!(await WebCity.exists({ isActive: true, name: new RegExp('^' + escapeRegex(city) + '$', 'i') }));
 };
 
 // from→to, or from→stop→to when a stop is given
@@ -165,9 +191,6 @@ export const getDistance = async (req, res) => {
     const { from, to } = req.query;
     const stop = String(req.query.stop || '').trim();
     if (!from || !to) return fail(res, 400, 'VALIDATION_ERROR', 'from and to are required');
-    if (!(await isServiceableCity(from))) {
-      return fail(res, 422, 'SERVICE_NOT_AVAILABLE', 'Service is not available at this pickup location');
-    }
     res.json(await resolveTripDistance(from, to, stop));
   } catch (err) {
     fail(res, 422, 'DISTANCE_UNAVAILABLE', err.message);
@@ -178,10 +201,11 @@ export const getDistance = async (req, res) => {
 export const getWebConfig = async (req, res) => {
   try {
     res.json(await publicReadCache.wrap('web-config', async () => {
-      const [cities, rules, setting] = await Promise.all([
+      const [cities, rules, setting, addons] = await Promise.all([
         WebCity.find({ isActive: true, isPopular: true }).sort({ name: 1 }).limit(24).lean(),
         WebFareRule.find({ isActive: true }).lean(),
         Setting.findOne().lean(),
+        WebAddon.find({ isActive: true }).sort({ sortOrder: 1, createdAt: 1 }).lean(),
       ]);
 
       const pkgs = new Map();
@@ -192,8 +216,9 @@ export const getWebConfig = async (req, res) => {
         localPackages: [...pkgs.values()].sort((a, b) => a.hours - b.hours || a.km - b.km),
         maxSeats: rules.reduce((m, r) => Math.max(m, r.seats || 0), 0),
         freeCancelMinutes: setting?.webFreeCancelMinutes ?? 60,
-        policies: (setting?.webPolicies || []).map((p) => ({ kind: p.kind, title: p.title, text: p.text })),
+        policies: (setting?.webPolicies || []).map((p) => ({ kind: p.kind, title: p.title, text: p.text, tripTypes: p.tripTypes || [] })),
         partPaymentPercent: setting?.webPartPaymentPercent ?? 25,
+        addons: addons.map((a) => ({ code: a.code, title: a.title, price: a.price, unit: a.unit, badge: a.badge || '', tripTypes: a.tripTypes || [] })),
       };
     }));
   } catch (err) {
@@ -218,23 +243,32 @@ export const listVehicleTypes = async (req, res) => {
   }
 };
 
-const computeForRequest = async ({ vehicleType, distanceKm, tripType, package: pkg, days }) => {
+// Airport trips need a direction (pickup from / drop to the airport); anything else is ignored.
+const normalizeAirportDir = (tripType, dir) => {
+  if (tripType !== 'airport') return '';
+  const d = String(dir || '').toLowerCase();
+  if (!AIRPORT_DIRS.includes(d)) throw Object.assign(new Error('airportDir must be "from" or "to" for airport trips'), { code: 'VALIDATION_ERROR' });
+  return d;
+};
+
+const computeForRequest = async ({ vehicleType, distanceKm, tripType, package: pkg, days, airportDir }) => {
   if (!TRIP_TYPES.includes(tripType)) throw Object.assign(new Error('Invalid tripType'), { code: 'VALIDATION_ERROR' });
+  airportDir = normalizeAirportDir(tripType, airportDir);
   const rule = await WebFareRule.findOne({ vehicleType: String(vehicleType || '').toLowerCase(), isActive: true });
   if (!rule) throw Object.assign(new Error('Vehicle type not available'), { code: 'VEHICLE_NOT_FOUND' });
-  const fare = calculateWebFare(rule, { distanceKm, tripType, packageLabel: pkg, days });
+  const fare = calculateWebFare(rule, { distanceKm, tripType, packageLabel: pkg, days, airportDir });
   return { rule, fare };
 };
 
 // POST /api/fare/calculate
 export const calculateFareApi = async (req, res) => {
   try {
-    const { vehicleType, distanceKm, tripType = 'oneway', package: pkg = '', days = 1 } = req.body || {};
+    const { vehicleType, distanceKm, tripType = 'oneway', package: pkg = '', days = 1, airportDir } = req.body || {};
     const dist = Number(distanceKm);
     if (!vehicleType || !Number.isFinite(dist) || dist < 0 || dist > 6000) {
       return fail(res, 400, 'VALIDATION_ERROR', 'vehicleType and a valid distanceKm are required');
     }
-    const { fare } = await computeForRequest({ vehicleType, distanceKm: dist, tripType, package: pkg, days });
+    const { fare } = await computeForRequest({ vehicleType, distanceKm: dist, tripType, package: pkg, days, airportDir });
     const pct = await getPartPercent();
     res.json({
       ...fare,
@@ -251,12 +285,12 @@ export const calculateFareApi = async (req, res) => {
 
 // Shared by /coupons/* : fare for the cart, derived on the server.
 const cartFare = async (body) => {
-  const { vehicleType, distanceKm, tripType = 'oneway', package: pkg = '', days = 1 } = body || {};
+  const { vehicleType, distanceKm, tripType = 'oneway', package: pkg = '', days = 1, airportDir } = body || {};
   const dist = Number(distanceKm);
   if (!vehicleType || !Number.isFinite(dist) || dist < 0 || dist > 6000) {
     throw Object.assign(new Error('vehicleType and a valid distanceKm are required'), { code: 'VALIDATION_ERROR' });
   }
-  const { fare } = await computeForRequest({ vehicleType, distanceKm: dist, tripType, package: pkg, days });
+  const { fare } = await computeForRequest({ vehicleType, distanceKm: dist, tripType, package: pkg, days, airportDir });
   return { fare, tripType, vehicleType: String(vehicleType).toLowerCase() };
 };
 
@@ -340,7 +374,7 @@ export const createBooking = async (req, res) => {
     let computed;
     try {
       computed = await computeForRequest({
-        vehicleType: vehicle.id, distanceKm, tripType, package: trip.package, days: tripDays,
+        vehicleType: vehicle.id, distanceKm, tripType, package: trip.package, days: tripDays, airportDir: trip.airportDir,
       });
     } catch (err) {
       return fail(res, err.code === 'VEHICLE_NOT_FOUND' ? 404 : 400, err.code || 'FARE_ERROR', err.message);
@@ -366,7 +400,16 @@ export const createBooking = async (req, res) => {
       discount = applied.discount;
       couponCode = applied.coupon.code;
     }
-    const payableTotal = f.total - discount;
+    // Add-ons: priced here from server data (never the client's amounts) and added on top of the discounted fare.
+    let addons;
+    try {
+      addons = await resolveAddons(clientFare.addons, {
+        tripType, billableKm: f.billableKm, city: String(trip.to || trip.from).split(',')[0].trim(),
+      });
+    } catch (err) {
+      return fail(res, 400, err.code || 'ADDON_ERROR', err.message);
+    }
+    const payableTotal = f.total - discount + addons.total;
     const { paidNow, payLater } = splitPayment(payableTotal, paymentOption, await getPartPercent());
 
     const booking = await WebBooking.create({
@@ -377,7 +420,7 @@ export const createBooking = async (req, res) => {
       },
       trip: {
         from: trip.from, to: trip.to || '', stop, date: trip.date, time: trip.time, tripType,
-        package: trip.package || '', days: tripDays, returnDate: tripType === 'roundtrip' ? returnDate : '', distanceKm,
+        package: trip.package || '', airportDir: tripType === 'airport' ? String(trip.airportDir).toLowerCase() : '', days: tripDays, returnDate: tripType === 'roundtrip' ? returnDate : '', distanceKm,
       },
       vehicle: {
         id: computed.rule.vehicleType, name: computed.rule.name,
@@ -385,7 +428,7 @@ export const createBooking = async (req, res) => {
       },
       fare: {
         baseFare: f.baseFare, extraKmFare: f.extraKmFare, driverAllowance: f.driverAllowance, gst: f.gst,
-        addons: [], discount, couponCode, total: payableTotal, paymentOption, paidNow, payLater,
+        addons: addons.items, discount, couponCode, total: payableTotal, paymentOption, paidNow, payLater,
       },
     });
 

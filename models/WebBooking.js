@@ -23,7 +23,8 @@ const webBookingSchema = new mongoose.Schema(
       stop: { type: String, default: '' }, // optional intermediate stop
       date: { type: String, required: true }, // YYYY-MM-DD
       time: { type: String, required: true }, // HH:mm
-      tripType: { type: String, enum: ['oneway', 'roundtrip', 'local'], default: 'oneway' },
+      tripType: { type: String, enum: ['oneway', 'roundtrip', 'local', 'airport'], default: 'oneway' },
+      airportDir: { type: String, enum: ['', 'from', 'to'], default: '' }, // airport trips: from = pickup at airport, to = drop at airport
       package: { type: String, default: '' },
       days: { type: Number, default: 1 },
       returnDate: { type: String, default: '' }, // YYYY-MM-DD, round trips only

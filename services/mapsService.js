@@ -120,6 +120,38 @@ export const getPlaceDetails = async (placeId) => {
   }
 };
 
+// Places API (New) - street address for a GPS point. The legacy Geocoding API rejects referer-restricted keys, so this
+// takes the closest place to the point (widening the search once) and returns its formatted address.
+export const reverseGeocode = async (lat, lng) => {
+  const latitude = Number(lat);
+  const longitude = Number(lng);
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) throw new Error('Valid latitude and longitude are required');
+
+  try {
+    for (const radius of [150, 1000]) {
+      const data = await googleRequest({
+        method: 'post',
+        url: 'https://places.googleapis.com/v1/places:searchNearby',
+        data: {
+          maxResultCount: 1,
+          rankPreference: 'DISTANCE',
+          languageCode: 'en',
+          regionCode: 'IN',
+          locationRestriction: { circle: { center: { latitude, longitude }, radius } },
+        },
+        headers: { 'X-Goog-FieldMask': 'places.formattedAddress' },
+        timeout: 6000,
+      });
+      const address = data.places?.[0]?.formattedAddress;
+      if (address) return { address: address.replace(/,?s*India$/i, '') };
+    }
+  } catch (error) {
+    console.error('Google reverse geocode error:', googleError(error));
+    throw new Error('Failed to read your location');
+  }
+  throw new Error('No address found for this location');
+};
+
 // Routes API - driving distance/time. Each end is { lat, lng } or { address }.
 const toWaypoint = (p) => {
   if (p.placeId) return { placeId: p.placeId };
