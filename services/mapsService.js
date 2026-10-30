@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios from './httpClient.js';
 
 // Server-side key. Falls back to the browser key only for local testing.
 const getGoogleKey = () => process.env.GOOGLE_MAP_SERVER_API || process.env.GOOGLE_MAP_API;

@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios from './httpClient.js';
 import redis from '../config/redis.js';
 
 const OTP_EXPIRY_SEC = 5 * 60;        // 5 minutes — OTP valid window

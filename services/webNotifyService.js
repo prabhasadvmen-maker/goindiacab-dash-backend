@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios from './httpClient.js';
 
 // Transactional email via Brevo when EMAIL_ENABLED=true and BREVO_API_KEY + BREVO_FROM_EMAIL are set.
 // SMS has no provider wired for transactional messages yet (APITxT is OTP-only), so smsSent is always false.
