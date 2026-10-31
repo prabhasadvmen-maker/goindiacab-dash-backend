@@ -1,7 +1,7 @@
 import express from 'express';
 import rateLimit from 'express-rate-limit';
 import {
-  suggestLocations, suggestDestinations, reverseLocation, getDistance, listVehicleTypes, getWebConfig, validateCouponApi, listCouponsApi, calculateFareApi,
+  suggestLocations, suggestDestinations, checkServiceable, reverseLocation, getDistance, listVehicleTypes, getWebConfig, validateCouponApi, listCouponsApi, calculateFareApi,
   createBooking, getBooking, downloadReceipt, createPaymentOrder, verifyPayment, notifyBookingConfirmed,
 } from '../controllers/websiteController.js';
 
@@ -19,6 +19,7 @@ const limiter = (max) =>
 // GETs below are cacheable by browsers/CDN (Cache-Control) on top of the server-side caches in the controller.
 router.get('/locations/suggest', limiter(120), publicCache(300), suggestLocations);
 router.get('/locations/suggest-destination', limiter(120), publicCache(300), suggestDestinations);
+router.get('/locations/serviceable', limiter(60), publicCache(300), checkServiceable);
 router.get('/locations/reverse', limiter(20), reverseLocation);
 router.get('/distance', limiter(60), publicCache(300), getDistance);
 router.get('/fare/vehicles', limiter(60), publicCache(30, 0), listVehicleTypes);

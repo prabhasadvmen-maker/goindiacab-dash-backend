@@ -16,6 +16,7 @@ import { getPresignedUrl } from '../services/r2Service.js';
 import { createTtlCache } from '../services/ttlCache.js';
 import { publicReadCache } from '../services/webCache.js';
 import { buildReceiptPdf, receiptFileName } from '../services/receiptPdf.js';
+import { isServiceablePlace, SERVICE_UNAVAILABLE_MESSAGE } from '../config/serviceAreas.js';
 
 const escapeRegex = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 // "Railway Rd, Colony, Varanasi, Uttar Pradesh, India" -> "Varanasi, Uttar Pradesh" (keeps labels short but unambiguous)
@@ -86,11 +87,13 @@ export const suggestDestinations = async (req, res) => {
     if (q.length < 2) return res.json({ suggestions: [] });
 
     const airportsOnly = req.query.type === 'airport';
+    // Outstation (One Way / Round Trip): only places inside the served cities.
+    const restrict = req.query.area === 'outstation';
     // Airport trips stay inside one city: `city` is "name" or "alias1|alias2" and results must mention one of them.
     const cityAlts = String(req.query.city || '').toLowerCase().split('|').map((s) => s.split(',')[0].trim()).filter(Boolean);
     const city = cityAlts[0] || '';
 
-    const suggestions = await suggestCache.wrap(`${airportsOnly ? 'to-airport' : 'to'}:${cityAlts.join('|')}:${q.toLowerCase()}`, async () => {
+    const suggestions = await suggestCache.wrap(`${airportsOnly ? 'to-airport' : 'to'}${restrict ? '-svc' : ''}:${cityAlts.join('|')}:${q.toLowerCase()}`, async () => {
       let places = await getAutoCompleteSuggestions(city ? `${q} ${city}` : q, airportsOnly ? { airports: true } : { cities: false });
       if (airportsOnly) {
         // Belt and braces: Google can still return nearby roads/hotels, so keep only real airports.
@@ -102,6 +105,7 @@ export const suggestDestinations = async (req, res) => {
           return cityAlts.some((c) => text.includes(c));
         });
       }
+      if (restrict) places = places.filter((p) => isServiceablePlace(p.mainText, p.secondaryText));
       const seen = new Set();
       const out = [];
       for (const p of places) {
@@ -143,25 +147,37 @@ export const reverseLocation = async (req, res) => {
   }
 };
 
+// GET /api/locations/serviceable?places=Agra, Uttar Pradesh|Hotel X, Jaipur  — outstation search guard for typed (unpicked) places
+export const checkServiceable = (req, res) => {
+  const places = String(req.query.places || '').split('|').map((x) => x.trim()).filter(Boolean);
+  const bad = places.filter((p) => !isServiceablePlace(p));
+  if (bad.length) return res.json({ serviceable: false, places: bad, message: SERVICE_UNAVAILABLE_MESSAGE });
+  res.json({ serviceable: true });
+};
+
 // GET /api/locations/suggest?q=del  — FROM field: admin-managed cities only (limited list)
 export const suggestLocations = async (req, res) => {
   try {
     const q = String(req.query.q || '').trim();
     if (q.length < 2) return res.json({ suggestions: [] });
 
-    const suggestions = await suggestCache.wrap(`from:${q.toLowerCase()}`, async () => {
+    const restrict = req.query.area === 'outstation';
+    const suggestions = await suggestCache.wrap(`from${restrict ? '-svc' : ''}:${q.toLowerCase()}`, async () => {
       const rx = new RegExp('^' + escapeRegex(q), 'i');
       const cities = await WebCity.find({ isActive: true, name: rx })
         .sort({ isPopular: -1, name: 1 })
         .limit(8)
         .lean();
-      const list = cities.map((c) => ({ label: c.state ? `${c.name}, ${c.state}` : c.name, value: c.name }));
+      const list = cities
+        .filter((c) => !restrict || isServiceablePlace(c.name, c.state))
+        .map((c) => ({ label: c.state ? `${c.name}, ${c.state}` : c.name, value: c.name }));
 
       // Pickup can be anywhere: admin cities first, then any place from Google Places.
       const seen = new Set(list.map((s) => s.label.toLowerCase()));
       try {
         const places = await getAutoCompleteSuggestions(q, { cities: false });
         for (const p of places) {
+          if (restrict && !isServiceablePlace(p.mainText, p.secondaryText)) continue;
           const state = shortRegion(p.secondaryText);
           const label = state ? `${p.mainText}, ${state}` : p.mainText;
           if (seen.has(label.toLowerCase())) continue;
