@@ -1,4 +1,6 @@
 import axios from './httpClient.js';
+import WebFareRule from '../models/WebFareRule.js';
+import { calculateWebFare } from './webFareService.js';
 
 // Transactional email via Brevo when EMAIL_ENABLED=true and BREVO_API_KEY + BREVO_FROM_EMAIL are set.
 // SMS has no provider wired for transactional messages yet (APITxT is OTP-only), so smsSent is always false.
@@ -30,6 +32,12 @@ const fmtPickup = (date, time) => {
   const d = new Date(`${date}T${time}:00+05:30`);
   if (Number.isNaN(d.getTime())) return `${date} ${time}`;
   return d.toLocaleString('en-IN', { ...IST, weekday: 'short', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true });
+};
+
+const fmtDay = (d) => {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(d || '');
+  if (!m) return d || '';
+  return new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])).toLocaleDateString('en-IN', { timeZone: 'UTC', weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
 };
 
 const TRIP_LABEL = { oneway: 'One-way Trip', roundtrip: 'Round Trip', local: 'Local Rental', airport: 'Airport Transfer' };
@@ -73,6 +81,7 @@ const tripRows = (booking) => {
   if (trip.to) rows.push(kv('Drop', esc(trip.to)));
   rows.push(kv('Pickup date &amp; time', esc(fmtPickup(trip.date, trip.time))));
   if (trip.tripType === 'local' && trip.package) rows.push(kv('Package', esc(trip.package)));
+  if (trip.tripType === 'roundtrip' && trip.returnDate) rows.push(kv('Return date', esc(fmtDay(trip.returnDate))));
   if (trip.tripType === 'roundtrip' && trip.days > 1) rows.push(kv('Days', esc(trip.days)));
   if (trip.distanceKm > 0 && trip.tripType !== 'local') rows.push(kv('Distance', `${esc(trip.distanceKm)} km`));
   rows.push(kv('Cab', esc([vehicle.name, vehicle.model].filter(Boolean).join(' · '))));
@@ -161,7 +170,7 @@ const layout = ({ preheader, badge, badgeColor, title, subtitle, body }) => `<!D
 
 // ───────── receipt (sent once, after payment is verified) ─────────
 
-const receiptHtml = (booking) => {
+const receiptHtml = (booking, limits) => {
   const { fare, payment, passenger } = booking;
   const cash = fare.paymentOption === 'cash'; // whole fare is paid to the driver, nothing was paid online
   const addons = (fare.addons || []).filter((a) => a && Number(a.price) > 0);
@@ -177,20 +186,7 @@ const receiptHtml = (booking) => {
     fare.discount > 0 ? kv(`Coupon discount${fare.couponCode ? ` (${esc(fare.couponCode)})` : ''}`, `- ${inr(fare.discount)}`, { color: '#16A34A', bold: true }) : '',
   ].join('');
 
-  // Tell the customer what happens if the trip runs past the included km / hours.
-  const extraRate = Number(fare.extraKmRate) || 0;
-  const incKm = Number(fare.includedKm) || 0;
-  const extraHourRate = Number(fare.extraHourRate) || 0;
-  const incHours = Number(fare.includedHours) || 0;
-  const limitRows = extraRate > 0 ? [
-    incKm > 0 ? kv('Km included in your fare', `${incKm} km`) : '',
-    kv('Extra km charge', `<span style="color:${ORANGE};">${inr(extraRate)} per km</span>`, { bold: true }),
-    incHours > 0 && extraHourRate > 0 ? kv(`Hours included`, `${incHours} hrs`) : '',
-    incHours > 0 && extraHourRate > 0 ? kv('Extra hour charge', `<span style="color:${ORANGE};">${inr(extraHourRate)} per hour</span>`, { bold: true }) : '',
-  ].join('') : '';
-  const limitNote = extraRate > 0
-    ? `<tr><td style="padding:10px 28px 0;font-size:12px;line-height:1.5;color:#64748B;">If the trip goes beyond ${incKm > 0 ? `${incKm} km` : 'the included km'}, the extra distance is charged at ${inr(extraRate)} per km and paid to the driver at the end of the trip.</td></tr>`
-    : '';
+  const limitSection = limitBlock(limits || { includedKm: Number(fare.includedKm) || 0, extraKmRate: Number(fare.extraKmRate) || 0, includedHours: Number(fare.includedHours) || 0, extraHourRate: Number(fare.extraHourRate) || 0 }, 'customer');
 
   const totals = `
     <tr><td style="padding:22px 28px 0;">
@@ -223,8 +219,7 @@ const receiptHtml = (booking) => {
     ${section('Passenger', passengerRows(booking))}
     ${section('Fare summary', fareRows)}
     ${totals}
-    ${limitRows ? section('Extra km &amp; limits', limitRows) : ''}
-    ${limitNote}
+    ${limitSection}
     ${section('Payment', paymentRows)}
     ${button(bookingUrl(booking), 'View Booking')}`;
 
@@ -243,6 +238,40 @@ const receiptHtml = (booking) => {
 };
 
 // ───────── status update (sent whenever the admin changes the booking status) ─────────
+
+// Km / hour limits and the rates charged beyond them. New bookings store them; older ones are worked out again from the vehicle's fare rule.
+const limitsOf = async (booking) => {
+  const f = booking.fare || {};
+  const stored = { includedKm: Number(f.includedKm) || 0, extraKmRate: Number(f.extraKmRate) || 0, includedHours: Number(f.includedHours) || 0, extraHourRate: Number(f.extraHourRate) || 0 };
+  if (stored.extraKmRate > 0) return stored;
+  try {
+    const rule = await WebFareRule.findOne({ vehicleType: booking.vehicle?.id }).lean();
+    if (!rule) return stored;
+    const t = booking.trip || {};
+    const calc = calculateWebFare(rule, { distanceKm: t.distanceKm, tripType: t.tripType, packageLabel: t.package, days: t.days, airportDir: t.airportDir });
+    return { includedKm: calc.includedKm, extraKmRate: calc.perKmAfter, includedHours: calc.includedHours, extraHourRate: calc.perHourAfter };
+  } catch {
+    return stored;
+  }
+};
+
+// "Km limit & extra charges" block shared by the customer receipt and the driver mail.
+const limitBlock = (limits, audience) => {
+  const { includedKm, extraKmRate, includedHours, extraHourRate } = limits;
+  if (!(extraKmRate > 0)) return '';
+  const rows = [
+    includedKm > 0 ? kv('Km limit (included in fare)', `${includedKm} km`, { bold: true }) : '',
+    kv('Extra km charge', `<span style="color:${ORANGE};">${inr(extraKmRate)} per km</span>`, { bold: true }),
+    includedHours > 0 && extraHourRate > 0 ? kv('Hours limit (included in fare)', `${includedHours} hrs`, { bold: true }) : '',
+    includedHours > 0 && extraHourRate > 0 ? kv('Extra hour charge', `<span style="color:${ORANGE};">${inr(extraHourRate)} per hour</span>`, { bold: true }) : '',
+  ].join('');
+  const lim = includedKm > 0 ? `${includedKm} km` : 'the included km';
+  const note = audience === 'driver'
+    ? `If the trip runs beyond ${lim}, collect the extra distance from the passenger at ${inr(extraKmRate)} per km at the end of the trip, in addition to the amount above.`
+    : `If the trip goes beyond ${lim}, the extra distance is charged at ${inr(extraKmRate)} per km and paid to the driver at the end of the trip.`;
+  return `${section(audience === 'driver' ? 'Km limit &amp; extra charges' : 'Extra km &amp; limits', rows)}
+    <tr><td style="padding:10px 28px 0;font-size:12px;line-height:1.5;color:#64748B;">${note}</td></tr>`;
+};
 
 // Driver typed in by the admin (assignedDriver) wins; a linked Partner record is the fallback.
 const driverOf = (booking) => {
@@ -265,7 +294,7 @@ const driverRows = (booking) => {
 };
 
 // Mail for the driver: everything needed to do the pickup.
-const driverTripHtml = (booking) => {
+const driverTripHtml = (booking, limits) => {
   const d = driverOf(booking);
   const { fare, passenger } = booking;
   const due = Number(fare.payLater) || 0;
@@ -285,7 +314,8 @@ const driverTripHtml = (booking) => {
       kv('Total fare', inr(fare.total)),
       kv('Paid online', inr(booking.payment?.status === 'paid' ? booking.payment.paidAmount || fare.paidNow : 0)),
       kv('Collect from passenger', inr(due), { bold: true, color: ORANGE }),
-    ].join(''))}`;
+    ].join(''))}
+    ${limitBlock(limits, 'driver')}`;
   return {
     subject: `New trip assigned - ${booking.bookingId} - ${fmtPickup(booking.trip.date, booking.trip.time)}`,
     html: layout({
@@ -374,7 +404,7 @@ export const sendBookingConfirmation = async (booking) => {
     subject: booking.fare.paymentOption === 'cash'
       ? `Booking confirmed - pay ${inr(booking.fare.payLater)} to the driver - ${booking.bookingId}`
       : `Booking confirmed & payment receipt - ${booking.bookingId}`,
-    html: receiptHtml(booking),
+    html: receiptHtml(booking, await limitsOf(booking)),
   });
   return result;
 };
@@ -393,7 +423,7 @@ export const sendDriverAssignment = async (booking) => {
   const d = driverOf(booking);
   if (!d?.email) return { emailSent: false, skipped: 'no_driver_email' };
   if (!emailReady()) return { emailSent: false, skipped: 'email_disabled' };
-  const { subject, html } = driverTripHtml(booking);
+  const { subject, html } = driverTripHtml(booking, await limitsOf(booking));
   const emailSent = await sendMail({ to: d.email, name: d.name, subject, html });
   return { emailSent, skipped: emailSent ? undefined : 'send_failed' };
 };
@@ -401,3 +431,4 @@ export const sendDriverAssignment = async (booking) => {
 // Exposed for previews / tests.
 export const renderReceiptHtml = receiptHtml;
 export const renderStatusHtml = statusHtml;
+export const renderDriverHtml = driverTripHtml;
