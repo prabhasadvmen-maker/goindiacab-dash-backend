@@ -274,9 +274,25 @@ export const deleteAddon = handle(async (req, res) => {
 
 // ───────── Bookings ─────────
 export const listWebBookings = handle(async (req, res) => {
-  const { status, payment, search, page = 1, limit = 15 } = req.query;
+  const { status, payment, search, page = 1, limit = 15, dateField = 'trip', from, to } = req.query;
   const filter = {};
   if (status && status !== 'all') filter.status = status;
+  // Date range (YYYY-MM-DD, inclusive). "trip" = the day of travel (stored as a plain date string);
+  // "booked" = the day the booking was made, using India time (IST, UTC+5:30) day boundaries.
+  const isDay = (s) => /^\d{4}-\d{2}-\d{2}$/.test(String(s || ''));
+  if (isDay(from) || isDay(to)) {
+    if (dateField === 'booked') {
+      const range = {};
+      if (isDay(from)) range.$gte = new Date(`${from}T00:00:00+05:30`);
+      if (isDay(to)) range.$lte = new Date(`${to}T23:59:59.999+05:30`);
+      filter.createdAt = range;
+    } else {
+      const range = {};
+      if (isDay(from)) range.$gte = from;
+      if (isDay(to)) range.$lte = to;
+      filter['trip.date'] = range;
+    }
+  }
   if (payment && payment !== 'all') filter['payment.status'] = payment;
   if (search) {
     const rx = new RegExp(escapeRegex(String(search)), 'i');
