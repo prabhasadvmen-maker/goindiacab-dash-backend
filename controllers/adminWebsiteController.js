@@ -283,7 +283,8 @@ export const listWebBookings = handle(async (req, res) => {
     filter.$or = [{ bookingId: rx }, { 'passenger.name': rx }, { 'passenger.mobile': rx }, { 'trip.from': rx }, { 'trip.to': rx }];
   }
   const total = await WebBooking.countDocuments(filter);
-  const data = await WebBooking.find(filter).sort({ createdAt: -1 }).skip((page - 1) * limit).limit(Number(limit));
+  const data = await WebBooking.find(filter).sort({ createdAt: -1 }).skip((page - 1) * limit).limit(Number(limit))
+    .populate('assignedPartner', 'name phone vehicleNumber');
   res.json({ success: true, data, total, page: Number(page), pages: Math.ceil(total / limit) || 1 });
 });
 
