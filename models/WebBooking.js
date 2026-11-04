@@ -71,6 +71,15 @@ const webBookingSchema = new mongoose.Schema(
       default: [],
     },
     assignedPartner: { type: mongoose.Schema.Types.ObjectId, ref: 'Partner', default: null },
+    // Driver details typed in by the admin when the booking is marked "assigned". Shown to the customer and emailed to both sides.
+    assignedDriver: {
+      name: { type: String, default: '', trim: true },
+      phone: { type: String, default: '', trim: true },
+      email: { type: String, default: '', trim: true, lowercase: true },
+      vehicleNumber: { type: String, default: '', trim: true, uppercase: true },
+      vehicleModel: { type: String, default: '', trim: true },
+      assignedAt: { type: Date, default: null },
+    },
     adminNote: { type: String, default: '' },
     cancelReason: { type: String, default: '' },
   },

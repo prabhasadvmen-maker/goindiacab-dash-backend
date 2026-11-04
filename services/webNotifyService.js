@@ -244,14 +244,59 @@ const receiptHtml = (booking) => {
 
 // ───────── status update (sent whenever the admin changes the booking status) ─────────
 
-const driverRows = (booking) => {
+// Driver typed in by the admin (assignedDriver) wins; a linked Partner record is the fallback.
+const driverOf = (booking) => {
+  const d = booking.assignedDriver;
+  if (d && d.name) return { name: d.name, phone: d.phone, email: d.email, vehicleNumber: d.vehicleNumber, vehicleModel: d.vehicleModel };
   const p = booking.assignedPartner;
-  if (!p || typeof p !== 'object' || !p.name) return '';
+  if (p && typeof p === 'object' && p.name) return { name: p.name, phone: p.phone, email: '', vehicleNumber: p.vehicleNumber, vehicleModel: '' };
+  return null;
+};
+
+const driverRows = (booking) => {
+  const p = driverOf(booking);
+  if (!p) return '';
   return section('Your driver', [
     kv('Name', esc(p.name)),
-    p.phone ? kv('Phone', esc(p.phone)) : '',
+    p.phone ? kv('Mobile', `+91 ${esc(p.phone)}`) : '',
     p.vehicleNumber ? kv('Vehicle number', esc(p.vehicleNumber)) : '',
+    p.vehicleModel ? kv('Vehicle', esc(p.vehicleModel)) : '',
   ].join(''));
+};
+
+// Mail for the driver: everything needed to do the pickup.
+const driverTripHtml = (booking) => {
+  const d = driverOf(booking);
+  const { fare, passenger } = booking;
+  const due = Number(fare.payLater) || 0;
+  const body = `
+    ${section('Trip', [
+      kv('Booking ID', `<span style="font-family:Consolas,Menlo,monospace;color:${NAVY};">${esc(booking.bookingId)}</span>`, { bold: true }),
+      tripRows(booking),
+    ].join(''))}
+    ${section('Passenger', [
+      kv('Name', esc(passenger.name)),
+      kv('Mobile', `+91 ${esc(passenger.mobile)}`),
+      kv('Pickup address', esc(passenger.pickupAddress)),
+      passenger.dropAddress ? kv('Drop address', esc(passenger.dropAddress)) : '',
+      passenger.instructions ? kv('Instructions', esc(passenger.instructions)) : '',
+    ].join(''))}
+    ${section('Payment', [
+      kv('Total fare', inr(fare.total)),
+      kv('Paid online', inr(booking.payment?.status === 'paid' ? booking.payment.paidAmount || fare.paidNow : 0)),
+      kv('Collect from passenger', inr(due), { bold: true, color: ORANGE }),
+    ].join(''))}`;
+  return {
+    subject: `New trip assigned - ${booking.bookingId} - ${fmtPickup(booking.trip.date, booking.trip.time)}`,
+    html: layout({
+      preheader: `New trip ${booking.bookingId}: ${booking.trip.from}${booking.trip.to ? ` to ${booking.trip.to}` : ''}.`,
+      badge: 'New Trip',
+      badgeColor: '#4F46E5',
+      title: 'A new trip is assigned to you',
+      subtitle: `Hi ${esc(d?.name || 'Driver')}, please be at the pickup point on time and call the passenger before you start.`,
+      body,
+    }),
+  };
 };
 
 const statusHtml = (booking) => {
@@ -340,6 +385,16 @@ export const sendStatusUpdate = async (booking) => {
   if (!emailReady()) return { emailSent: false, skipped: 'email_disabled' };
   const { subject, html } = statusHtml(booking);
   const emailSent = await sendMail({ to: booking.passenger.email, name: booking.passenger.name, subject, html });
+  return { emailSent, skipped: emailSent ? undefined : 'send_failed' };
+};
+
+// Trip details to the driver the admin entered (only when a driver email was given).
+export const sendDriverAssignment = async (booking) => {
+  const d = driverOf(booking);
+  if (!d?.email) return { emailSent: false, skipped: 'no_driver_email' };
+  if (!emailReady()) return { emailSent: false, skipped: 'email_disabled' };
+  const { subject, html } = driverTripHtml(booking);
+  const emailSent = await sendMail({ to: d.email, name: d.name, subject, html });
   return { emailSent, skipped: emailSent ? undefined : 'send_failed' };
 };
 

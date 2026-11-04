@@ -75,9 +75,11 @@ const publicBooking = (b) => ({
   confirmedAt: b.payment.paidAt || b.createdAt,
   statusHistory: (b.statusHistory || []).map((h) => ({ status: h.status, at: h.at })),
   cancelReason: b.status === 'cancelled' ? b.cancelReason : '',
-  driver: b.assignedPartner?.name
-    ? { name: b.assignedPartner.name, phone: b.assignedPartner.phone || '', vehicleNumber: b.assignedPartner.vehicleNumber || '' }
-    : null,
+  driver: b.assignedDriver?.name
+    ? { name: b.assignedDriver.name, phone: b.assignedDriver.phone || '', vehicleNumber: b.assignedDriver.vehicleNumber || '', vehicleModel: b.assignedDriver.vehicleModel || '' }
+    : b.assignedPartner?.name
+      ? { name: b.assignedPartner.name, phone: b.assignedPartner.phone || '', vehicleNumber: b.assignedPartner.vehicleNumber || '' }
+      : null,
 });
 
 // GET /api/locations/suggest-destination?q=agra  — Google Places only (TO field, unlimited)

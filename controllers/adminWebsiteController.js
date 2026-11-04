@@ -8,7 +8,7 @@ import { invalidatePublicCaches } from '../services/webCache.js';
 import { getTripTypeMeta } from '../services/webMeta.js';
 import { TRIP_TYPES } from '../services/webFareService.js';
 import { uploadBase64ToR2, getPresignedUrl } from '../services/r2Service.js';
-import { sendStatusUpdate } from '../services/webNotifyService.js';
+import { sendStatusUpdate, sendDriverAssignment } from '../services/webNotifyService.js';
 
 const escapeRegex = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const key = (s) => String(s || '').trim().toLowerCase();
@@ -313,9 +313,27 @@ export const getWebBooking = handle(async (req, res) => {
 const STATUSES = ['confirmed', 'assigned', 'in_progress', 'completed', 'cancelled'];
 
 export const updateWebBookingStatus = handle(async (req, res) => {
-  const { status, cancelReason, adminNote, assignedPartner } = req.body;
+  const { status, cancelReason, adminNote, assignedPartner, assignedDriver } = req.body;
   const booking = await WebBooking.findOne({ bookingId: req.params.bookingId.toUpperCase() });
   if (!booking) return res.status(404).json({ success: false, message: 'Booking not found' });
+
+  // Driver details entered by the admin (name + 10-digit mobile are required; driver email is optional but needed to mail the driver).
+  let driverChanged = false;
+  if (assignedDriver !== undefined) {
+    const d = {
+      name: String(assignedDriver?.name || '').trim().slice(0, 80),
+      phone: String(assignedDriver?.phone || '').replace(/\D/g, '').slice(-10),
+      email: String(assignedDriver?.email || '').trim().toLowerCase().slice(0, 120),
+      vehicleNumber: String(assignedDriver?.vehicleNumber || '').trim().toUpperCase().slice(0, 20),
+      vehicleModel: String(assignedDriver?.vehicleModel || '').trim().slice(0, 60),
+    };
+    if (!d.name) return res.status(400).json({ success: false, message: 'Driver name is required' });
+    if (d.phone.length !== 10) return res.status(400).json({ success: false, message: 'Enter a valid 10-digit driver mobile number' });
+    if (d.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email)) return res.status(400).json({ success: false, message: 'Enter a valid driver email address' });
+    const prev = booking.assignedDriver || {};
+    driverChanged = ['name', 'phone', 'email', 'vehicleNumber', 'vehicleModel'].some((k) => (prev[k] || '') !== d[k]);
+    booking.assignedDriver = { ...d, assignedAt: driverChanged || !prev.assignedAt ? new Date() : prev.assignedAt };
+  }
 
   let statusChanged = false;
   if (status !== undefined) {
@@ -331,7 +349,8 @@ export const updateWebBookingStatus = handle(async (req, res) => {
 
   // Tell the customer about every real status change. A mail failure never fails the update itself.
   let email = null;
-  if (statusChanged) {
+  let driverEmail = null;
+  if (statusChanged || (driverChanged && booking.status === 'assigned')) {
     try {
       await booking.populate('assignedPartner', 'name phone vehicleNumber');
       email = await sendStatusUpdate(booking);
@@ -340,7 +359,16 @@ export const updateWebBookingStatus = handle(async (req, res) => {
       email = { emailSent: false, skipped: 'send_failed' };
     }
   }
-  res.json({ success: true, data: booking, email, message: 'Booking updated' });
+  // The driver gets the trip details by email whenever driver details are saved on an assigned booking.
+  if (driverChanged && booking.status === 'assigned') {
+    try {
+      driverEmail = await sendDriverAssignment(booking);
+    } catch (err) {
+      console.error('Driver email failed:', err.message);
+      driverEmail = { emailSent: false, skipped: 'send_failed' };
+    }
+  }
+  res.json({ success: true, data: booking, email, driverEmail, message: 'Booking updated' });
 });
 
 export const getWebsiteStats = handle(async (req, res) => {
