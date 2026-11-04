@@ -92,7 +92,7 @@ const passengerRows = (booking) => {
 };
 
 const bookingUrl = (booking) => {
-  const base = String(process.env.WEBSITE_URL || '').replace(/\/+$/, '');
+  const base = siteBase();
   return base ? `${base}/booking/${encodeURIComponent(booking.bookingId)}` : '';
 };
 
@@ -112,8 +112,21 @@ const supportLine = () => {
 };
 
 // Logo shown at the top of every email. Mail clients need a public https URL, so it is the one the website already serves.
-const siteBase = () => String(process.env.WEBSITE_URL || '').split(',')[0].trim().replace(/\/+$/, '');
-const logoUrl = () => process.env.EMAIL_LOGO_URL || (siteBase() ? `${siteBase()}/goindiacab-logo-wide.png` : '');
+// WEBSITE_URL may be written without a scheme ("goindiacab.com"); mail clients need a full https URL.
+const siteBase = () => {
+  // WEBSITE_URL is a comma-separated origin list (also used for CORS): take the first public one, never a localhost entry.
+  const entries = String(process.env.WEBSITE_URL || '').split(',').map((s) => s.trim().replace(/\/+$/, '')).filter(Boolean);
+  const raw = entries.find((s) => !/localhost|127\.0\.0\.1/i.test(s)) || '';
+  if (!raw) return '';
+  return /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+};
+// EMAIL_LOGO_URL is only used when it is a full http(s) URL. A bare file name (e.g. "logo.jpeg") cannot load in an inbox,
+// which is what produced the blank logo box; in that case use the logo the website already serves.
+const logoUrl = () => {
+  const custom = String(process.env.EMAIL_LOGO_URL || '').trim();
+  if (/^https?:\/\//i.test(custom)) return custom;
+  return siteBase() ? `${siteBase()}/goindiacab-logo-wide.png` : '';
+};
 
 const logoCell = () => {
   const url = logoUrl();
@@ -168,6 +181,21 @@ const receiptHtml = (booking) => {
     fare.discount > 0 ? kv(`Coupon discount${fare.couponCode ? ` (${esc(fare.couponCode)})` : ''}`, `- ${inr(fare.discount)}`, { color: '#16A34A', bold: true }) : '',
   ].join('');
 
+  // Tell the customer what happens if the trip runs past the included km / hours.
+  const extraRate = Number(fare.extraKmRate) || 0;
+  const incKm = Number(fare.includedKm) || 0;
+  const extraHourRate = Number(fare.extraHourRate) || 0;
+  const incHours = Number(fare.includedHours) || 0;
+  const limitRows = extraRate > 0 ? [
+    incKm > 0 ? kv('Km included in your fare', `${incKm} km`) : '',
+    kv('Extra km charge', `<span style="color:${ORANGE};">${inr(extraRate)} per km</span>`, { bold: true }),
+    incHours > 0 && extraHourRate > 0 ? kv(`Hours included`, `${incHours} hrs`) : '',
+    incHours > 0 && extraHourRate > 0 ? kv('Extra hour charge', `<span style="color:${ORANGE};">${inr(extraHourRate)} per hour</span>`, { bold: true }) : '',
+  ].join('') : '';
+  const limitNote = extraRate > 0
+    ? `<tr><td style="padding:10px 28px 0;font-size:12px;line-height:1.5;color:#64748B;">If the trip goes beyond ${incKm > 0 ? `${incKm} km` : 'the included km'}, the extra distance is charged at ${inr(extraRate)} per km and paid to the driver at the end of the trip.</td></tr>`
+    : '';
+
   const totals = `
     <tr><td style="padding:22px 28px 0;">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${SOFT};border:1px solid ${LINE};border-radius:10px;">
@@ -199,6 +227,8 @@ const receiptHtml = (booking) => {
     ${section('Passenger', passengerRows(booking))}
     ${section('Fare summary', fareRows)}
     ${totals}
+    ${limitRows ? section('Extra km &amp; limits', limitRows) : ''}
+    ${limitNote}
     ${section('Payment', paymentRows)}
     ${button(bookingUrl(booking), 'View Booking')}`;
 

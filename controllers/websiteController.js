@@ -473,7 +473,8 @@ export const createBooking = async (req, res) => {
         model: computed.rule.model, seats: computed.rule.seats,
       },
       fare: {
-        baseFare: f.baseFare, extraKmFare: f.extraKmFare, driverAllowance: f.driverAllowance, gst: f.gst,
+        baseFare: f.baseFare, includedKm: f.includedKm, extraKmRate: f.perKmAfter,
+        includedHours: f.includedHours, extraHourRate: f.perHourAfter, extraKmFare: f.extraKmFare, driverAllowance: f.driverAllowance, gst: f.gst,
         addons: addons.items, discount, couponCode, total: payableTotal, paymentOption, paidNow, payLater,
       },
     });

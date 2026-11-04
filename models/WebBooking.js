@@ -38,6 +38,11 @@ const webBookingSchema = new mongoose.Schema(
     },
     fare: {
       baseFare: { type: Number, default: 0 },
+      // Km / hours covered by the base fare and the rate charged beyond them (shown to the customer in the confirmation email).
+      includedKm: { type: Number, default: 0 },
+      extraKmRate: { type: Number, default: 0 },
+      includedHours: { type: Number, default: 0 },
+      extraHourRate: { type: Number, default: 0 },
       extraKmFare: { type: Number, default: 0 },
       driverAllowance: { type: Number, default: 0 },
       gst: { type: Number, default: 0 },

@@ -31,6 +31,10 @@ export const protect = async (req, res, next) => {
       
       next();
     } catch (error) {
+      // An expired or malformed token is a normal event: answer 401 so the dashboard sends the user to login, without a stack trace in the logs.
+      if (error.name === 'TokenExpiredError') {
+        return res.status(401).json({ message: 'Session expired, please log in again', code: 'TOKEN_EXPIRED' });
+      }
       if (error.name !== 'JsonWebTokenError') {
         console.error('JWT verification error:', error);
       }
