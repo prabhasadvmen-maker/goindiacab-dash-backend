@@ -120,13 +120,9 @@ const siteBase = () => {
   if (!raw) return '';
   return /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
 };
-// EMAIL_LOGO_URL is only used when it is a full http(s) URL. A bare file name (e.g. "logo.jpeg") cannot load in an inbox,
-// which is what produced the blank logo box; in that case use the logo the website already serves.
-const logoUrl = () => {
-  const custom = String(process.env.EMAIL_LOGO_URL || '').trim();
-  if (/^https?:\/\//i.test(custom)) return custom;
-  return siteBase() ? `${siteBase()}/goindiacab-logo-wide.png` : '';
-};
+// Always the website's own logo (public/goindiacab-logo-wide.png). The old EMAIL_LOGO_URL setting is no longer read:
+// it pointed at a private R2 file / bare file name, which is what produced the blank logo box.
+const logoUrl = () => (siteBase() ? `${siteBase()}/goindiacab-logo-wide.png` : '');
 
 const logoCell = () => {
   const url = logoUrl();
