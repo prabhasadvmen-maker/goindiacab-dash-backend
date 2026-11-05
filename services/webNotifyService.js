@@ -371,6 +371,87 @@ const statusHtml = (booking) => {
   };
 };
 
+// ───────── WhatsApp ─────────
+
+const waReady = () =>
+  !!process.env.WHATSAPP_ACCESS_TOKEN &&
+  !!process.env.WHATSAPP_PHONE_NUMBER_ID;
+
+const waPost = async (to, templateName, params) => {
+  const phone = String(to).replace(/\D/g, '');
+  const num = phone.startsWith('91') ? phone : `91${phone}`;
+  await axios.post(
+    `https://graph.facebook.com/v26.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
+    {
+      messaging_product: 'whatsapp',
+      to: num,
+      type: 'template',
+      template: {
+        name: templateName,
+        language: { code: process.env.WHATSAPP_TEMPLATE_LANG || 'en' },
+        components: [{ type: 'body', parameters: params.map((t) => ({ type: 'text', text: String(t) })) }],
+      },
+    },
+    { headers: { Authorization: `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`, 'Content-Type': 'application/json' }, timeout: 10000 }
+  );
+};
+
+const sendWhatsApp = async (mobile, booking) => {
+  if (!waReady() || !process.env.WHATSAPP_TEMPLATE_NAME) return false;
+  const { trip, vehicle, fare, bookingId, passenger } = booking;
+  const cash = fare.paymentOption === 'cash';
+  const tripType = TRIP_LABEL[trip.tripType] || trip.tripType;
+  const payment = cash ? `Pay Rs.${fare.payLater} to driver` : `Paid Rs.${fare.paidNow || fare.total} online`;
+  try {
+    await waPost(mobile, process.env.WHATSAPP_TEMPLATE_NAME, [
+      passenger.name,
+      bookingId,
+      tripType,
+      trip.from,
+      trip.to || 'Local',
+      fmtPickup(trip.date, trip.time),
+      [vehicle.name, vehicle.model].filter(Boolean).join(' '),
+      `Rs.${fare.total}`,
+      payment,
+      passenger.pickupAddress || trip.from,
+    ]);
+    return true;
+  } catch (err) {
+    console.error('WhatsApp user send failed:', err.response?.data || err.message);
+    return false;
+  }
+};
+
+const sendDriverWhatsApp = async (booking) => {
+  if (!waReady() || !process.env.WHATSAPP_DRIVER_TEMPLATE_NAME) return false;
+  const d = driverOf(booking);
+  if (!d?.phone) return false;
+  const { trip, vehicle, fare, bookingId, passenger } = booking;
+  const cash = fare.paymentOption === 'cash';
+  const tripType = TRIP_LABEL[trip.tripType] || trip.tripType;
+  const collect = cash ? `Rs.${fare.total}` : `Rs.${fare.payLater}`;
+  try {
+    await waPost(d.phone, process.env.WHATSAPP_DRIVER_TEMPLATE_NAME, [
+      d.name,
+      bookingId,
+      tripType,
+      trip.from,
+      trip.to || 'Local',
+      fmtPickup(trip.date, trip.time),
+      [vehicle.name, vehicle.model].filter(Boolean).join(' '),
+      passenger.name,
+      `+91${String(passenger.mobile).replace(/\D/g, '').replace(/^91/, '')}`,
+      passenger.pickupAddress || trip.from,
+      `Rs.${fare.total}`,
+      collect,
+    ]);
+    return true;
+  } catch (err) {
+    console.error('WhatsApp driver send failed:', err.response?.data || err.message);
+    return false;
+  }
+};
+
 // ───────── sending ─────────
 
 const sendMail = async ({ to, name, subject, html }) => {
@@ -396,16 +477,20 @@ const sendMail = async ({ to, name, subject, html }) => {
 
 // Receipt after a verified payment. Return shape is stored on booking.notification.
 export const sendBookingConfirmation = async (booking) => {
-  const result = { emailSent: false, smsSent: false };
-  if (!emailReady() || !booking.passenger.email) return result;
-  result.emailSent = await sendMail({
-    to: booking.passenger.email,
-    name: booking.passenger.name,
-    subject: booking.fare.paymentOption === 'cash'
-      ? `Booking confirmed - pay ${inr(booking.fare.payLater)} to the driver - ${booking.bookingId}`
-      : `Booking confirmed & payment receipt - ${booking.bookingId}`,
-    html: receiptHtml(booking, await limitsOf(booking)),
-  });
+  const result = { emailSent: false, smsSent: false, whatsappSent: false };
+  if (emailReady() && booking.passenger.email) {
+    result.emailSent = await sendMail({
+      to: booking.passenger.email,
+      name: booking.passenger.name,
+      subject: booking.fare.paymentOption === 'cash'
+        ? `Booking confirmed - pay ${inr(booking.fare.payLater)} to the driver - ${booking.bookingId}`
+        : `Booking confirmed & payment receipt - ${booking.bookingId}`,
+      html: receiptHtml(booking, await limitsOf(booking)),
+    });
+  }
+  if (booking.passenger.mobile) {
+    result.whatsappSent = await sendWhatsApp(booking.passenger.mobile, booking);
+  }
   return result;
 };
 
@@ -421,11 +506,13 @@ export const sendStatusUpdate = async (booking) => {
 // Trip details to the driver the admin entered (only when a driver email was given).
 export const sendDriverAssignment = async (booking) => {
   const d = driverOf(booking);
-  if (!d?.email) return { emailSent: false, skipped: 'no_driver_email' };
-  if (!emailReady()) return { emailSent: false, skipped: 'email_disabled' };
-  const { subject, html } = driverTripHtml(booking, await limitsOf(booking));
-  const emailSent = await sendMail({ to: d.email, name: d.name, subject, html });
-  return { emailSent, skipped: emailSent ? undefined : 'send_failed' };
+  const result = { emailSent: false, whatsappSent: false };
+  if (emailReady() && d?.email) {
+    const { subject, html } = driverTripHtml(booking, await limitsOf(booking));
+    result.emailSent = await sendMail({ to: d.email, name: d.name, subject, html });
+  }
+  result.whatsappSent = await sendDriverWhatsApp(booking);
+  return result;
 };
 
 // Exposed for previews / tests.
