@@ -4,6 +4,15 @@ export const CONTACT_SUBJECTS = ['General Inquiry', 'Booking Help', 'Complaint',
 export const SERVICE_TYPES = ['Outstation Trip', 'Local Rental', 'Airport Transfer', 'Corporate / Monthly', 'Wedding / Event', 'Other'];
 export const CONTACT_STATUSES = ['new', 'read', 'replied', 'closed'];
 
+const replySchema = new mongoose.Schema(
+  {
+    message: { type: String, required: true, trim: true, maxlength: 5000 },
+    sentBy: { type: String, default: '' },
+    sentAt: { type: Date, default: Date.now },
+  },
+  { _id: true }
+);
+
 const contactInquirySchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true, maxlength: 100 },
@@ -18,6 +27,7 @@ const contactInquirySchema = new mongoose.Schema(
     travelDate: { type: String, trim: true, default: '', match: [/^(\d{4}-\d{2}-\d{2})?$/, 'Invalid date'] },
     passengers: { type: Number, min: 1, max: 50 },
     status: { type: String, enum: CONTACT_STATUSES, default: 'new' },
+    replies: { type: [replySchema], default: [] }, // emailed replies sent by the superadmin
     adminNote: { type: String, trim: true, default: '', maxlength: 2000 },
   },
   { timestamps: true }

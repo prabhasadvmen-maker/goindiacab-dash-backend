@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import ContactInquiry, { CONTACT_STATUSES } from '../models/ContactInquiry.js';
+import { sendContactReply } from '../services/webNotifyService.js';
 
 const escapeRegex = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const validId = (id) => mongoose.Types.ObjectId.isValid(id);
@@ -78,6 +79,37 @@ export const updateContact = async (req, res) => {
   } catch (error) {
     console.error('Update contact error:', error);
     res.status(500).json({ success: false, message: 'Failed to update inquiry' });
+  }
+};
+
+// POST /api/admin/contacts/:id/reply  { message }  -> emails the customer, stores the reply, marks "replied"
+export const replyToContact = async (req, res) => {
+  try {
+    if (!validId(req.params.id)) return res.status(404).json({ success: false, message: 'Inquiry not found' });
+    const message = String(req.body?.message || '').trim();
+    if (message.length < 2) return res.status(400).json({ success: false, message: 'Please write a reply.' });
+    if (message.length > 5000) return res.status(400).json({ success: false, message: 'Reply is too long (max 5000 characters).' });
+
+    const inquiry = await ContactInquiry.findById(req.params.id);
+    if (!inquiry) return res.status(404).json({ success: false, message: 'Inquiry not found' });
+
+    const result = await sendContactReply(inquiry, message);
+    if (!result.ok) {
+      const reasons = {
+        no_email: 'This customer did not provide an email address. Please call them instead.',
+        email_disabled: 'Email sending is not configured on the server (EMAIL_ENABLED / BREVO settings).',
+        send_failed: 'The email could not be sent. Please try again.',
+      };
+      return res.status(result.reason === 'no_email' ? 400 : 502).json({ success: false, message: reasons[result.reason] || 'Failed to send reply' });
+    }
+
+    inquiry.replies.push({ message, sentBy: req.superadmin?.email || '' });
+    inquiry.status = 'replied';
+    await inquiry.save();
+    res.json({ success: true, message: `Reply sent to ${inquiry.email}`, data: inquiry });
+  } catch (error) {
+    console.error('Reply contact error:', error);
+    res.status(500).json({ success: false, message: 'Failed to send reply' });
   }
 };
 

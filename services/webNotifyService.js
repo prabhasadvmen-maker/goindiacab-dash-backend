@@ -140,7 +140,7 @@ const logoCell = () => {
     : `<span style="font-size:22px;font-weight:800;color:#ffffff;letter-spacing:.3px;">${esc(brand())}</span>`;
 };
 
-const layout = ({ preheader, badge, badgeColor, title, subtitle, body }) => `<!DOCTYPE html>
+const layout = ({ preheader, badge, badgeColor, title, subtitle, body, footerNote }) => `<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)}</title></head>
 <body style="margin:0;padding:0;background:#EEF2F7;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:${INK};">
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;">${esc(preheader)}</div>
@@ -161,7 +161,7 @@ const layout = ({ preheader, badge, badgeColor, title, subtitle, body }) => `<!D
     <tr><td style="padding:28px;">
       <div style="border-top:1px solid ${LINE};padding-top:18px;font-size:12px;color:${MUTED};line-height:1.7;text-align:center;">
         ${supportLine()}<br/>
-        This is an automated email from ${esc(brand())}. Please keep your Booking ID handy for any queries.
+        ${footerNote || `This is an automated email from ${esc(brand())}. Please keep your Booking ID handy for any queries.`}
       </div>
     </td></tr>
   </table>
@@ -542,6 +542,58 @@ export const sendContactInquiryNotification = async (inquiry) => {
     body,
   });
   return sendMail({ to, name: `${brand()} Team`, subject: `New inquiry: ${inquiry.subject} - ${inquiry.name}`, html });
+};
+
+// Acknowledgement mail to the person who submitted the contact form (only when they gave an email).
+export const sendContactConfirmation = async (inquiry) => {
+  if (!emailReady() || !inquiry.email) return false;
+  const trip = [
+    inquiry.serviceType ? kv('Service', esc(inquiry.serviceType)) : '',
+    inquiry.pickupLocation ? kv('Pickup', esc(inquiry.pickupLocation)) : '',
+    inquiry.dropLocation ? kv('Drop', esc(inquiry.dropLocation)) : '',
+    inquiry.travelDate ? kv('Travel date', esc(fmtDay(inquiry.travelDate))) : '',
+    inquiry.passengers ? kv('Passengers', esc(inquiry.passengers)) : '',
+  ].join('');
+  const body = `
+    ${section('Your inquiry', [
+      kv('Subject', esc(inquiry.subject)),
+      kv('Phone', `+91 ${esc(inquiry.phone)}`),
+      kv('Submitted', esc(fmtStamp(inquiry.createdAt || new Date()))),
+      trip,
+    ].join(''))}
+    ${section('Your message', `<tr><td style="padding:10px 0;font-size:14px;color:${INK};line-height:1.7;white-space:pre-wrap;">${esc(inquiry.message)}</td></tr>`)}
+    ${button(siteBase(), 'Visit GoIndiaCab')}`;
+  const html = layout({
+    preheader: 'We have received your message and will get back to you shortly.',
+    badge: 'Received',
+    badgeColor: '#16A34A',
+    title: `Thank you, ${esc(inquiry.name)}!`,
+    subtitle: 'We have received your message. Our team will review it and get back to you shortly, usually within 24 hours. For anything urgent, please call us.',
+    body,
+    footerNote: `${supportLine()}<br/>This is an automated confirmation from ${esc(brand())}. Please do not reply to this email.`,
+  });
+  return sendMail({ to: inquiry.email, name: inquiry.name, subject: `We received your message - ${brand()}`, html });
+};
+
+// Superadmin's reply to an inquiry. Returns { ok, reason } so the dashboard can show why it failed.
+export const sendContactReply = async (inquiry, replyText) => {
+  if (!inquiry.email) return { ok: false, reason: 'no_email' };
+  if (!emailReady()) return { ok: false, reason: 'email_disabled' };
+  const body = `
+    ${section('Our reply', `<tr><td style="padding:10px 0;font-size:14px;color:${INK};line-height:1.7;white-space:pre-wrap;">${esc(replyText)}</td></tr>`)}
+    ${section('Your original message', `<tr><td style="padding:10px 0;font-size:13px;color:${MUTED};line-height:1.7;white-space:pre-wrap;">${esc(inquiry.message)}</td></tr>`)}
+    ${button(siteBase(), 'Visit GoIndiaCab')}`;
+  const html = layout({
+    preheader: String(replyText).slice(0, 100),
+    badge: 'Reply',
+    badgeColor: '#2563EB',
+    title: `Hi ${esc(inquiry.name)},`,
+    subtitle: `Thank you for contacting ${esc(brand())}. Here is our reply to your inquiry about <b style="color:${INK};">${esc(inquiry.subject)}</b>.`,
+    body,
+    footerNote: `${supportLine()}<br/>You can reply to this email or call us any time. We are available 24/7.`,
+  });
+  const ok = await sendMail({ to: inquiry.email, name: inquiry.name, subject: `Re: ${inquiry.subject} - ${brand()}`, html });
+  return ok ? { ok: true } : { ok: false, reason: 'send_failed' };
 };
 
 // Exposed for previews / tests.

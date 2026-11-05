@@ -1,5 +1,5 @@
 import ContactInquiry, { CONTACT_SUBJECTS, SERVICE_TYPES } from '../models/ContactInquiry.js';
-import { sendContactInquiryNotification } from '../services/webNotifyService.js';
+import { sendContactInquiryNotification, sendContactConfirmation } from '../services/webNotifyService.js';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -34,6 +34,8 @@ export const submitContactInquiry = async (req, res) => {
 
     // Fire-and-forget: a mail failure must not fail the submission (the inquiry is already saved).
     sendContactInquiryNotification(inquiry).catch((err) => console.error('Contact notification failed:', err.message));
+    // Acknowledgement to the customer (only if they left an email).
+    sendContactConfirmation(inquiry).catch((err) => console.error('Contact confirmation failed:', err.message));
 
     res.status(201).json({ success: true, message: 'Thank you! Your message has been received. Our team will get back to you shortly.' });
   } catch (error) {

@@ -1,6 +1,6 @@
 import express from 'express';
 import { protect } from '../middleware/authMiddleware.js';
-import { listContacts, getContact, updateContact, deleteContact } from '../controllers/adminContactController.js';
+import { listContacts, getContact, updateContact, deleteContact, replyToContact } from '../controllers/adminContactController.js';
 
 const router = express.Router();
 router.use(protect);
@@ -12,6 +12,7 @@ router.use((req, res, next) => {
 
 // Mounted at /api/admin/contacts
 router.get('/', listContacts);
+router.post('/:id/reply', replyToContact);
 router.route('/:id').get(getContact).patch(updateContact).delete(deleteContact);
 
 export default router;
