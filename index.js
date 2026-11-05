@@ -17,6 +17,7 @@ import adminComplaintRoutes from './routes/adminComplaintRoutes.js';
 import partnerGranularRoutes from './routes/partnerGranularRoutes.js';
 import websiteRoutes from './routes/websiteRoutes.js';
 import adminWebsiteRoutes from './routes/adminWebsiteRoutes.js';
+import adminContactRoutes from './routes/adminContactRoutes.js';
 import http from 'http';
 import { initSocket } from './socket.js';
 
@@ -73,6 +74,7 @@ app.use('/api/admins/website', adminWebsiteRoutes); // must stay above /api/admi
 app.use('/api/admins', adminRoutes);
 app.use('/api/admins/complaints', adminComplaintRoutes);
 app.use('/api/admin/auth', adminAuthRoutes);
+app.use('/api/admin/contacts', adminContactRoutes);
 app.use('/api/partner', partnerRoutes);
 app.use('/api/v2/partner', partnerGranularRoutes); // Step 1 Granular APIs
 app.use('/api/v1/user/auth/send-otp', otpLimiter);

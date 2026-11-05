@@ -515,6 +515,35 @@ export const sendDriverAssignment = async (booking) => {
   return result;
 };
 
+// New website contact inquiry -> notification mail to the office inbox.
+export const sendContactInquiryNotification = async (inquiry) => {
+  if (!emailReady()) return false;
+  const to = process.env.CONTACT_NOTIFY_EMAIL || 'info@goindiacab.com';
+  const body = `
+    ${section('Inquiry details', [
+      kv('Name', esc(inquiry.name), { bold: true }),
+      kv('Phone', `<a href="tel:+91${esc(inquiry.phone)}" style="color:${NAVY};text-decoration:none;">+91 ${esc(inquiry.phone)}</a>`),
+      kv('Email', inquiry.email ? `<a href="mailto:${esc(inquiry.email)}" style="color:${NAVY};text-decoration:none;">${esc(inquiry.email)}</a>` : '&mdash;'),
+      kv('Subject', esc(inquiry.subject)),
+      inquiry.serviceType ? kv('Service type', esc(inquiry.serviceType)) : '',
+      inquiry.pickupLocation ? kv('Pickup', esc(inquiry.pickupLocation)) : '',
+      inquiry.dropLocation ? kv('Drop', esc(inquiry.dropLocation)) : '',
+      inquiry.travelDate ? kv('Travel date', esc(fmtDay(inquiry.travelDate))) : '',
+      inquiry.passengers ? kv('Passengers', esc(inquiry.passengers)) : '',
+      kv('Received', esc(fmtStamp(inquiry.createdAt || new Date()))),
+    ].join(''))}
+    ${section('Message', `<tr><td style="padding:10px 0;font-size:14px;color:${INK};line-height:1.7;white-space:pre-wrap;">${esc(inquiry.message)}</td></tr>`)}`;
+  const html = layout({
+    preheader: `${inquiry.name} (${inquiry.phone}): ${inquiry.subject}`,
+    badge: 'New Inquiry',
+    badgeColor: ORANGE,
+    title: 'New contact inquiry received',
+    subtitle: `${esc(inquiry.name)} submitted the contact form on the website. Manage it in the SuperAdmin dashboard under Contact Inquiries.`,
+    body,
+  });
+  return sendMail({ to, name: `${brand()} Team`, subject: `New inquiry: ${inquiry.subject} - ${inquiry.name}`, html });
+};
+
 // Exposed for previews / tests.
 export const renderReceiptHtml = receiptHtml;
 export const renderStatusHtml = statusHtml;

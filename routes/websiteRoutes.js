@@ -5,9 +5,16 @@ import {
   createBooking, getBooking, downloadReceipt, createPaymentOrder, verifyPayment, notifyBookingConfirmed,
 } from '../controllers/websiteController.js';
 
+import { submitContactInquiry } from '../controllers/contactController.js';
 import { publicCache } from '../services/ttlCache.js';
 
 const router = express.Router();
+
+// Contact form: 5 inquiries per IP per hour.
+const contactLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, max: 5, standardHeaders: true, legacyHeaders: false,
+  message: { success: false, error: 'RATE_LIMITED', message: 'Too many messages from your network. Please try again in an hour.' },
+});
 
 const limiter = (max) =>
   rateLimit({
@@ -33,5 +40,6 @@ router.get('/booking/:bookingId/receipt', limiter(30), downloadReceipt);
 router.post('/payment/create-order', limiter(10), createPaymentOrder);
 router.post('/payment/verify', limiter(20), verifyPayment);
 router.post('/notify/booking-confirmed', limiter(10), notifyBookingConfirmed);
+router.post('/contact', contactLimiter, submitContactInquiry);
 
 export default router;
