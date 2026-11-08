@@ -11,9 +11,6 @@ const cooldownKey = (phone) => `otp_cd:${phone}`;  // separate key, survives OTP
 const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
 
 // ─── Send OTP ────────────────────────────────────────────────────────────────
-// Flow: check cooldown → send SMS → on success save OTP + refresh cooldown
-// Cooldown is set AFTER confirmed SMS delivery — not before.
-// This prevents: cooldown blocking user when SMS never actually went out.
 export const sendOTP = async (phone) => {
   // 1. Block if within cooldown window
   const onCooldown = await redis.get(cooldownKey(phone));
@@ -23,26 +20,32 @@ export const sendOTP = async (phone) => {
   }
 
   const otp = generateOTP();
+  const num = phone.startsWith('91') ? phone : `91${phone}`;
 
-  // 2. Send SMS first — only proceed if delivery confirmed
-  const params = new URLSearchParams({
-    authkey: process.env.APITXT_API_KEY,
-    mobile: phone,
-    otp,
-    channel: 'sms',
-    country: '91',
-  });
+  // 2. Send via WhatsApp
+  const waRes = await axios.post(
+    `https://graph.facebook.com/v26.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
+    {
+      messaging_product: 'whatsapp',
+      to: num,
+      type: 'template',
+      template: {
+        name: process.env.WHATSAPP_OTP_TEMPLATE_NAME,
+        language: { code: 'en' },
+        components: [
+          { type: 'body', parameters: [{ type: 'text', text: otp }] },
+          { type: 'button', sub_type: 'url', index: '0', parameters: [{ type: 'text', text: otp }] },
+        ],
+      },
+    },
+    { headers: { Authorization: `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`, 'Content-Type': 'application/json' }, timeout: 10000 }
+  );
 
-  const response = await axios.post('https://apitxt.com/api/sendOTP', params, {
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    timeout: 10000, // 10s timeout — don't hang forever
-  });
-
-  if (response.data.status !== 'success') {
-    throw new Error(response.data.message || 'SMS provider failed to send OTP.');
+  if (!waRes.data?.messages?.[0]?.id) {
+    throw new Error('WhatsApp OTP delivery failed.');
   }
 
-  // 3. SMS confirmed — now atomically save OTP + cooldown in Redis pipeline
+  // 3. Save OTP + cooldown in Redis
   const data = JSON.stringify({ otp, attempts: 0 });
   const pipeline = redis.pipeline();
   pipeline.set(otpKey(phone), data, 'EX', OTP_EXPIRY_SEC);

@@ -189,6 +189,23 @@ const computeRouteWithRetry = async (origin, destination) => {
   }
 };
 
+// Places that have no drivable road to the final point; map to the nearest routable town.
+// Distances are road distances from the routable town to the actual destination (added to the computed route).
+const NON_ROUTABLE_OVERRIDES = {
+  'kedarnath': { routeTo: 'Gaurikund, Uttarakhand, India', extraKm: 19, extraMins: 60 },
+  'kedarnath temple': { routeTo: 'Gaurikund, Uttarakhand, India', extraKm: 19, extraMins: 60 },
+  'badrinath': { routeTo: 'Badrinath, Uttarakhand, India', extraKm: 0, extraMins: 0 }, // routable but sometimes fails
+  'hemkund sahib': { routeTo: 'Govindghat, Uttarakhand, India', extraKm: 19, extraMins: 75 },
+  'valley of flowers': { routeTo: 'Govindghat, Uttarakhand, India', extraKm: 17, extraMins: 70 },
+  'tungnath': { routeTo: 'Chopta, Uttarakhand, India', extraKm: 4, extraMins: 20 },
+};
+
+const getNonRoutableOverride = (addressStr) => {
+  if (!addressStr) return null;
+  const lower = addressStr.toLowerCase().replace(/,.*$/, '').trim();
+  return NON_ROUTABLE_OVERRIDES[lower] || null;
+};
+
 // A free-text place name can fail to geocode inside the Routes API; resolve it to exact coordinates ourselves instead.
 const toCoordinates = async (p) => {
   if (p.placeId) return getPlaceDetails(p.placeId);
@@ -204,7 +221,15 @@ const usableRoute = (r) => r && r.distanceMeters != null && r.distanceMeters > 0
 // Each end may carry a placeId (exact), an address, or lat/lng.
 // Order: as given (retried once on Google 5xx) -> address instead of placeId -> exact coordinates found via Places.
 export const getDistanceMatrix = async (origin, destination) => {
-  const label = `${describe(origin)} -> ${describe(destination)}`;
+  // Remap non-routable pilgrimage/trekking destinations to their nearest routable town.
+  const originOverride = getNonRoutableOverride(origin.address);
+  const destOverride = getNonRoutableOverride(destination.address);
+  const effectiveOrigin = originOverride ? { address: originOverride.routeTo } : origin;
+  const effectiveDestination = destOverride ? { address: destOverride.routeTo } : destination;
+  const extraKm = (originOverride?.extraKm || 0) + (destOverride?.extraKm || 0);
+  const extraMins = (originOverride?.extraMins || 0) + (destOverride?.extraMins || 0);
+
+  const label = `${describe(effectiveOrigin)} -> ${describe(effectiveDestination)}`;
   let lastError;
 
   const attempt = async (o, d) => {
@@ -218,19 +243,19 @@ export const getDistanceMatrix = async (origin, destination) => {
     return null;
   };
 
-  let route = await attempt(origin, destination);
+  let route = await attempt(effectiveOrigin, effectiveDestination);
 
-  if (!route && ((origin.placeId && origin.address) || (destination.placeId && destination.address))) {
+  if (!route && ((effectiveOrigin.placeId && effectiveOrigin.address) || (effectiveDestination.placeId && effectiveDestination.address))) {
     route = await attempt(
-      origin.address ? { address: origin.address } : origin,
-      destination.address ? { address: destination.address } : destination
+      effectiveOrigin.address ? { address: effectiveOrigin.address } : effectiveOrigin,
+      effectiveDestination.address ? { address: effectiveDestination.address } : effectiveDestination
     );
   }
 
   if (!route) {
     console.error(`Google Routes failed for ${label}: ${googleError(lastError)}; retrying with exact coordinates`);
     try {
-      const [o, d] = await Promise.all([toCoordinates(origin), toCoordinates(destination)]);
+      const [o, d] = await Promise.all([toCoordinates(effectiveOrigin), toCoordinates(effectiveDestination)]);
       if (o && d) route = await attempt({ lat: o.lat, lng: o.lng }, { lat: d.lat, lng: d.lng });
     } catch (err) {
       lastError = err;
@@ -242,8 +267,8 @@ export const getDistanceMatrix = async (origin, destination) => {
     throw new Error('Failed to calculate exact distance');
   }
 
-  const distanceMeters = route.distanceMeters;
-  const durationSeconds = parseInt(String(route.duration || '0').replace('s', ''), 10) || 0;
+  const distanceMeters = route.distanceMeters + (extraKm * 1000);
+  const durationSeconds = parseInt(String(route.duration || '0').replace('s', ''), 10) + (extraMins * 60) || 0;
 
   return {
     distance: { text: `${(distanceMeters / 1000).toFixed(1)} km`, value: distanceMeters },
