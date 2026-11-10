@@ -1,28 +1,35 @@
 import axios from './httpClient.js';
-import redis from '../config/redis.js';
 
-const OTP_EXPIRY_SEC = 5 * 60;        // 5 minutes — OTP valid window
-const RESEND_COOLDOWN_SEC = 60;        // 60 seconds — min gap between sends
-const MAX_VERIFY_ATTEMPTS = 5;         // max wrong attempts before OTP invalidated
+const OTP_EXPIRY_MS = 5 * 60 * 1000;      // 5 minutes
+const RESEND_COOLDOWN_MS = 60 * 1000;      // 60 seconds
+const MAX_VERIFY_ATTEMPTS = 5;
 
-const otpKey      = (phone) => `otp:${phone}`;
-const cooldownKey = (phone) => `otp_cd:${phone}`;  // separate key, survives OTP deletion
+// In-memory store: { phone -> { otp, attempts, expiresAt, cooldownUntil } }
+const store = new Map();
+
+// Cleanup expired entries every 10 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [k, v] of store) {
+    if (v.expiresAt < now && v.cooldownUntil < now) store.delete(k);
+  }
+}, 10 * 60 * 1000);
 
 const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
 
-// ─── Send OTP ────────────────────────────────────────────────────────────────
+// ─── Send OTP ─────────────────────────────────────────────────────────────────
 export const sendOTP = async (phone) => {
-  // 1. Block if within cooldown window
-  const onCooldown = await redis.get(cooldownKey(phone));
-  if (onCooldown) {
-    const ttl = await redis.ttl(cooldownKey(phone));
-    throw new Error(`Please wait ${ttl} seconds before requesting a new OTP.`);
+  const now = Date.now();
+  const entry = store.get(phone);
+
+  if (entry?.cooldownUntil > now) {
+    const secs = Math.ceil((entry.cooldownUntil - now) / 1000);
+    throw new Error(`Please wait ${secs} seconds before requesting a new OTP.`);
   }
 
   const otp = generateOTP();
   const num = phone.startsWith('91') ? phone : `91${phone}`;
 
-  // 2. Send via WhatsApp
   const waRes = await axios.post(
     `https://graph.facebook.com/v26.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
     {
@@ -41,80 +48,52 @@ export const sendOTP = async (phone) => {
     { headers: { Authorization: `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`, 'Content-Type': 'application/json' }, timeout: 10000 }
   );
 
-  if (!waRes.data?.messages?.[0]?.id) {
-    throw new Error('WhatsApp OTP delivery failed.');
-  }
+  if (!waRes.data?.messages?.[0]?.id) throw new Error('WhatsApp OTP delivery failed.');
 
-  // 3. Save OTP + cooldown in Redis
-  const data = JSON.stringify({ otp, attempts: 0 });
-  const pipeline = redis.pipeline();
-  pipeline.set(otpKey(phone), data, 'EX', OTP_EXPIRY_SEC);
-  pipeline.set(cooldownKey(phone), '1', 'EX', RESEND_COOLDOWN_SEC);
-  await pipeline.exec();
+  store.set(phone, {
+    otp,
+    attempts: 0,
+    expiresAt: now + OTP_EXPIRY_MS,
+    cooldownUntil: now + RESEND_COOLDOWN_MS,
+  });
 
   return true;
 };
 
-// ─── Verify OTP ──────────────────────────────────────────────────────────────
-// Uses Redis atomic WATCH/transaction pattern via Lua script to prevent
-// race condition on attempts counter (two simultaneous wrong guesses).
+// ─── Verify OTP ───────────────────────────────────────────────────────────────
 export const verifyOTP = async (phone, otp) => {
-  const key = otpKey(phone);
-  const raw = await redis.get(key);
+  const now = Date.now();
+  const entry = store.get(phone);
 
-  if (!raw) {
+  if (!entry || entry.expiresAt < now) {
+    store.delete(phone);
     return { success: false, message: 'OTP expired or not found. Please request a new OTP.' };
   }
 
-  const record = JSON.parse(raw);
+  entry.attempts += 1;
 
-  // Increment attempts atomically using Lua script
-  const luaScript = `
-    local raw = redis.call('GET', KEYS[1])
-    if not raw then return nil end
-    local rec = cjson.decode(raw)
-    rec['attempts'] = rec['attempts'] + 1
-    local ttl = redis.call('TTL', KEYS[1])
-    if ttl > 0 then
-      redis.call('SET', KEYS[1], cjson.encode(rec), 'EX', ttl)
-    end
-    return cjson.encode(rec)
-  `;
-
-  const updated = await redis.eval(luaScript, 1, key);
-
-  if (!updated) {
-    return { success: false, message: 'OTP expired. Please request a new OTP.' };
-  }
-
-  const updatedRecord = JSON.parse(updated);
-
-  if (updatedRecord.attempts > MAX_VERIFY_ATTEMPTS) {
-    await redis.del(key);
+  if (entry.attempts > MAX_VERIFY_ATTEMPTS) {
+    store.delete(phone);
     return { success: false, message: 'Too many failed attempts. Please request a new OTP.' };
   }
 
-  if (updatedRecord.otp !== otp) {
-    const remaining = MAX_VERIFY_ATTEMPTS - updatedRecord.attempts;
-    return {
-      success: false,
-      message: `Invalid OTP. ${remaining} attempt${remaining === 1 ? '' : 's'} remaining.`,
-    };
+  if (entry.otp !== otp) {
+    const remaining = MAX_VERIFY_ATTEMPTS - entry.attempts;
+    return { success: false, message: `Invalid OTP. ${remaining} attempt${remaining === 1 ? '' : 's'} remaining.` };
   }
 
-  // Correct OTP — delete it immediately (one-time use)
-  await redis.del(key);
+  store.delete(phone);
   return { success: true, message: 'OTP verified successfully.' };
 };
 
-// ─── Cooldown check (for controllers that need to check before calling sendOTP) ──
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 export const canResendOTP = async (phone) => {
-  const onCooldown = await redis.get(cooldownKey(phone));
-  return !onCooldown;
+  const entry = store.get(phone);
+  return !entry || entry.cooldownUntil <= Date.now();
 };
 
-// ─── Remaining cooldown seconds (for frontend countdown timer) ────────────────
 export const getCooldownTTL = async (phone) => {
-  const ttl = await redis.ttl(cooldownKey(phone));
-  return ttl > 0 ? ttl : 0;
+  const entry = store.get(phone);
+  if (!entry || entry.cooldownUntil <= Date.now()) return 0;
+  return Math.ceil((entry.cooldownUntil - Date.now()) / 1000);
 };
