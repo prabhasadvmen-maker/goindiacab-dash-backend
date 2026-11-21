@@ -17,6 +17,7 @@ import adminComplaintRoutes from './routes/adminComplaintRoutes.js';
 import partnerGranularRoutes from './routes/partnerGranularRoutes.js';
 import websiteRoutes from './routes/websiteRoutes.js';
 import adminWebsiteRoutes from './routes/adminWebsiteRoutes.js';
+import adminBlogRoutes from './routes/adminBlogRoutes.js';
 import adminContactRoutes from './routes/adminContactRoutes.js';
 import http from 'http';
 import { initSocket } from './socket.js';
@@ -71,6 +72,7 @@ const otpLimiter = rateLimit({
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/admins/website', adminWebsiteRoutes); // must stay above /api/admins
+app.use('/api/admins/blogs', adminBlogRoutes);   // must stay above /api/admins
 app.use('/api/admins', adminRoutes);
 app.use('/api/admins/complaints', adminComplaintRoutes);
 app.use('/api/admin/auth', adminAuthRoutes);

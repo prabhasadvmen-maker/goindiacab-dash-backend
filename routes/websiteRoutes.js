@@ -4,8 +4,8 @@ import {
   suggestLocations, suggestDestinations, checkServiceable, reverseLocation, getDistance, listVehicleTypes, getWebConfig, validateCouponApi, listCouponsApi, calculateFareApi,
   createBooking, getBooking, downloadReceipt, createPaymentOrder, verifyPayment, notifyBookingConfirmed,
 } from '../controllers/websiteController.js';
-
 import { submitContactInquiry } from '../controllers/contactController.js';
+import { publicListBlogs, publicGetBlog } from '../controllers/adminBlogController.js';
 import { publicCache } from '../services/ttlCache.js';
 
 const router = express.Router();
@@ -41,5 +41,9 @@ router.post('/payment/create-order', limiter(10), createPaymentOrder);
 router.post('/payment/verify', limiter(20), verifyPayment);
 router.post('/notify/booking-confirmed', limiter(10), notifyBookingConfirmed);
 router.post('/contact', contactLimiter, submitContactInquiry);
+
+// Public blog APIs
+router.get('/blogs', limiter(60), publicCache(60, 0), publicListBlogs);
+router.get('/blogs/:slug', limiter(60), publicCache(120, 0), publicGetBlog);
 
 export default router;
