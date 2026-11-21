@@ -12,7 +12,7 @@ export const login = async (req, res) => {
       return res.status(400).json({ message: 'Please provide email and password' });
     }
 
-    const superAdmin = await SuperAdmin.findOne({ email: email.toLowerCase().trim() });
+    const superAdmin = await SuperAdmin.findOne({ email: String(email).toLowerCase().trim() });
 
     if (!superAdmin) {
       return res.status(401).json({ message: 'Invalid email or password' });
