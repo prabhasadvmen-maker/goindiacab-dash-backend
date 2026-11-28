@@ -2,7 +2,7 @@ import express from 'express';
 import rateLimit from 'express-rate-limit';
 import {
   suggestLocations, suggestDestinations, checkServiceable, reverseLocation, getDistance, listVehicleTypes, getWebConfig, validateCouponApi, listCouponsApi, calculateFareApi,
-  createBooking, getBooking, downloadReceipt, createPaymentOrder, verifyPayment, notifyBookingConfirmed,
+  createBooking, getBooking, downloadReceipt, createPaymentOrder, createDirectPaymentOrder, verifyPayment, notifyBookingConfirmed,
 } from '../controllers/websiteController.js';
 import { submitContactInquiry } from '../controllers/contactController.js';
 import { publicListBlogs, publicGetBlog } from '../controllers/adminBlogController.js';
@@ -38,6 +38,7 @@ router.post('/booking/create', limiter(10), createBooking);
 router.get('/booking/:bookingId', limiter(60), getBooking);
 router.get('/booking/:bookingId/receipt', limiter(30), downloadReceipt);
 router.post('/payment/create-order', limiter(10), createPaymentOrder);
+router.post('/payment/create-direct-order', limiter(10), createDirectPaymentOrder);
 router.post('/payment/verify', limiter(20), verifyPayment);
 router.post('/notify/booking-confirmed', limiter(10), notifyBookingConfirmed);
 router.post('/contact', contactLimiter, submitContactInquiry);

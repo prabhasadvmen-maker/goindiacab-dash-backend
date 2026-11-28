@@ -649,6 +649,40 @@ export const verifyPayment = async (req, res) => {
   }
 };
 
+// POST /api/payment/create-direct-order - no booking needed, just name/phone/amount
+export const createDirectPaymentOrder = async (req, res) => {
+  try {
+    const { name, phone, email, amount } = req.body || {};
+    const amountNum = Number(amount);
+    if (!name || String(name).trim().length < 2) return fail(res, 400, 'VALIDATION_ERROR', 'Name is required');
+    if (!phone || !/^[6-9]\d{9}$/.test(String(phone).replace(/\D/g, '').slice(-10))) return fail(res, 400, 'VALIDATION_ERROR', 'Valid 10-digit phone is required');
+    if (!amountNum || amountNum < 1) return fail(res, 400, 'VALIDATION_ERROR', 'Valid amount is required');
+    const amountPaise = Math.round(amountNum * 100);
+    if (amountPaise < 100) return fail(res, 400, 'INVALID_AMOUNT', 'Amount must be at least ₹1');
+    const rzp = getRazorpay();
+    if (!rzp) return fail(res, 503, 'PAYMENT_NOT_CONFIGURED', 'Online payment is not available right now');
+    let order;
+    try {
+      order = await rzp.orders.create({
+        amount: amountPaise,
+        currency: 'INR',
+        receipt: 'DIRECT-' + Date.now(),
+        notes: { name: String(name).trim(), phone: String(phone).replace(/\D/g, '').slice(-10), email: String(email || '') },
+      });
+    } catch (rzpErr) {
+      const rzpCode = rzpErr?.error?.code || '';
+      const rzpDesc = rzpErr?.error?.description || rzpErr?.message || 'Unknown Razorpay error';
+      console.error(`createDirectPaymentOrder: Razorpay error [${rzpCode}] ${rzpDesc}`);
+      if (rzpCode === 'BAD_REQUEST_ERROR') return fail(res, 400, 'PAYMENT_REQUEST_ERROR', rzpDesc);
+      return fail(res, 502, 'PAYMENT_GATEWAY_ERROR', 'Could not start payment. Please try again.');
+    }
+    res.json({ orderId: order.id, amount: order.amount, currency: order.currency, keyId: process.env.RAZORPAY_KEY_ID });
+  } catch (err) {
+    console.error('createDirectPaymentOrder:', err);
+    fail(res, 500, 'SERVER_ERROR', 'Could not start payment');
+  }
+};
+
 // POST /api/notify/booking-confirmed - uses DB data only; idempotent; only for paid bookings
 export const notifyBookingConfirmed = async (req, res) => {
   try {
