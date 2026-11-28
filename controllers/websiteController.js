@@ -551,12 +551,13 @@ export const createPaymentOrder = async (req, res) => {
     if (!booking) return fail(res, 404, 'BOOKING_NOT_FOUND', 'Booking not found');
     if (booking.status === 'cancelled') return fail(res, 409, 'BOOKING_CANCELLED', 'Booking is cancelled');
     if (booking.payment.status === 'paid') return fail(res, 409, 'ALREADY_PAID', 'Booking is already paid');
-    if (booking.fare.paymentOption === 'cash') return fail(res, 409, 'PAY_TO_DRIVER', 'This booking is paid to the driver, no online payment is needed');
+    // cash bookings can still pay online via /paynow — use full remaining amount
+    const isCash = booking.fare.paymentOption === 'cash';
+    const amountToCharge = isCash ? booking.fare.total : booking.fare.paidNow;
 
-    // Guard: Razorpay requires a minimum positive amount (in paise)
-    const amountPaise = Math.round((booking.fare.paidNow || 0) * 100);
+    const amountPaise = Math.round(amountToCharge * 100);
     if (amountPaise < 100) {
-      console.error(`createPaymentOrder: invalid paidNow amount (${booking.fare.paidNow}) for booking ${booking.bookingId}`);
+      console.error(`createPaymentOrder: invalid amount (${amountToCharge}) for booking ${booking.bookingId}`);
       return fail(res, 400, 'INVALID_AMOUNT', 'Payable amount is too low to initiate a payment');
     }
 
@@ -623,8 +624,14 @@ export const verifyPayment = async (req, res) => {
 
     booking.payment.status = 'paid';
     booking.payment.paymentId = razorpay_payment_id;
-    booking.payment.paidAmount = booking.fare.paidNow;
+    booking.payment.paidAmount = booking.fare.paymentOption === 'cash' ? booking.fare.total : booking.fare.paidNow;
     booking.payment.paidAt = new Date();
+    // if was cash booking, upgrade to full online payment
+    if (booking.fare.paymentOption === 'cash') {
+      booking.fare.paymentOption = 'full';
+      booking.fare.paidNow = booking.fare.total;
+      booking.fare.payLater = 0;
+    }
     await booking.save();
     if (booking.fare.couponCode) {
       WebCoupon.updateOne({ code: booking.fare.couponCode }, { $inc: { usedCount: 1 } }).catch(() => {});
